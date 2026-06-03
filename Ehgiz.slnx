@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Ehgiz.API/Ehgiz.API.csproj" />
+  <Project Path="Ehgiz.Application/Ehgiz.Application.csproj" />
+  <Project Path="Ehgiz.DAL/Ehgiz.DAL.csproj" />
+  <Project Path="Ehgiz.Tests/Ehgiz.Tests.csproj" />
+</Solution>
