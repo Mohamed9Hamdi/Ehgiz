@@ -4,9 +4,9 @@ using Ehgiz.DAL.Interfaces.Repositories;
 
 namespace Ehgiz.DAL.Repositories;
 
-public class UserRepository : Repository<User>, IUserRepository
+public class ReviewRepository : Repository<Review>, IReviewRepository
 {
-    public UserRepository(EhgizDbContext context) : base(context)
+    public ReviewRepository(EhgizDbContext context) : base(context)
     {
     }
 }
