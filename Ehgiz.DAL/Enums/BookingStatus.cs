@@ -1,3 +1,5 @@
+namespace Ehgiz.DAL.Enums;
+
 public enum BookingStatus
 {
     Pending = 1,
@@ -5,6 +7,5 @@ public enum BookingStatus
     Rejected = 3,
     Active = 4,
     Completed = 5,
-    Cancelled = 6,
-
+    Cancelled = 6
 }
