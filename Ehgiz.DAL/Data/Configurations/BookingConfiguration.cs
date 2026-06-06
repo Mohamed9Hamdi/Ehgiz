@@ -1,4 +1,5 @@
 using Ehgiz.DAL.Entities;
+using Ehgiz.DAL.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -35,5 +36,29 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .WithMany(u => u.Bookings)
             .HasForeignKey(b => b.RenterId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasData(
+            new Booking
+            {
+                Id = 1,
+                ToolId = 1,
+                RenterId = SeedData.Users.SaraId,
+                StartDate = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
+                EndDate = new DateTime(2026, 2, 3, 0, 0, 0, DateTimeKind.Utc),
+                TotalPrice = 225m,
+                Status = BookingStatus.Completed,
+                CreatedAt = SeedData.SeedDate
+            },
+            new Booking
+            {
+                Id = 2,
+                ToolId = 3,
+                RenterId = SeedData.Users.SaraId,
+                StartDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                EndDate = new DateTime(2026, 3, 12, 0, 0, 0, DateTimeKind.Utc),
+                TotalPrice = 150m,
+                Status = BookingStatus.Active,
+                CreatedAt = SeedData.SeedDate
+            });
     }
 }

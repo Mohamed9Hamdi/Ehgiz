@@ -1,4 +1,5 @@
 using Ehgiz.DAL.Entities;
+using Ehgiz.DAL.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -38,5 +39,17 @@ public class IssueReportConfiguration : IEntityTypeConfiguration<IssueReport>
             .WithMany(u => u.IssueReports)
             .HasForeignKey(ir => ir.ReporterId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasData(
+            new IssueReport
+            {
+                Id = 1,
+                BookingId = 2,
+                ReporterId = SeedData.Users.SaraId,
+                Title = "Ladder lock issue",
+                Description = "One of the safety locks on the ladder feels loose.",
+                Status = IssueReportStatus.Open,
+                CreatedAt = new DateTime(2026, 3, 11, 10, 0, 0, DateTimeKind.Utc)
+            });
     }
 }
