@@ -1,9 +1,9 @@
 namespace Ehgiz.DAL.Enums;
 
-public enum PaymentStatus
+public enum EscrowStatus
 {
     Pending = 1,
-    Completed = 2,
-    Failed = 3,
+    Held = 2,
+    Released = 3,
     Refunded = 4
 }
