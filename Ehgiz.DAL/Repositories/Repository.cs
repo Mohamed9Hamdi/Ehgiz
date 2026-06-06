@@ -26,25 +26,12 @@ public class Repository<T> : IRepository<T> where T : class
         return await _dbSet.AsNoTracking().ToListAsync();
     }
 
-    public async Task<IReadOnlyList<T>> FindAsync(Expression<Func<T, bool>> predicate)
-    {
-        return await _dbSet.AsNoTracking().Where(predicate).ToListAsync();
-    }
-
-    public async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
-    {
-        return await _dbSet.FirstOrDefaultAsync(predicate);
-    }
 
     public async Task AddAsync(T entity)
     {
         await _dbSet.AddAsync(entity);
     }
 
-    public async Task AddRangeAsync(IEnumerable<T> entities)
-    {
-        await _dbSet.AddRangeAsync(entities);
-    }
 
     public void Update(T entity)
     {
@@ -56,15 +43,7 @@ public class Repository<T> : IRepository<T> where T : class
         _dbSet.Remove(entity);
     }
 
-    public void RemoveRange(IEnumerable<T> entities)
-    {
-        _dbSet.RemoveRange(entities);
-    }
 
-    public async Task<bool> AnyAsync(Expression<Func<T, bool>> predicate)
-    {
-        return await _dbSet.AnyAsync(predicate);
-    }
 
     public async Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null)
     {
