@@ -10,4 +10,3 @@ public class UserRepository : Repository<User>, IUserRepository
     {
     }
 }
-`
