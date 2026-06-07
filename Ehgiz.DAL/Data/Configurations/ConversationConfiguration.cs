@@ -12,14 +12,6 @@ public class ConversationConfiguration : IEntityTypeConfiguration<Conversation>
 
         builder.HasKey(c => c.Id);
 
-        builder.Property(c => c.User1Id)
-            .IsRequired()
-            .HasMaxLength(450);
-
-        builder.Property(c => c.User2Id)
-            .IsRequired()
-            .HasMaxLength(450);
-
         builder.Property(c => c.UpdatedAt)
             .IsRequired();
 

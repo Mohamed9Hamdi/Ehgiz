@@ -6,8 +6,8 @@ internal static class SeedData
 
     internal static class Users
     {
-        internal const string AhmadId = "11111111-1111-1111-1111-111111111111";
-        internal const string SaraId = "22222222-2222-2222-2222-222222222222";
-        internal const string OmarId = "33333333-3333-3333-3333-333333333333";
+        internal const int AhmadId = 1;
+        internal const int SaraId = 2;
+        internal const int OmarId = 3;
     }
 }

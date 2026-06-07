@@ -13,10 +13,6 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
 
         builder.HasKey(b => b.Id);
 
-        builder.Property(b => b.RenterId)
-            .IsRequired()
-            .HasMaxLength(450);
-
         builder.Property(b => b.TotalPrice)
             .HasColumnType("decimal(18,2)");
 

@@ -13,10 +13,6 @@ public class IssueReportConfiguration : IEntityTypeConfiguration<IssueReport>
 
         builder.HasKey(ir => ir.Id);
 
-        builder.Property(ir => ir.ReporterId)
-            .IsRequired()
-            .HasMaxLength(450);
-
         builder.Property(ir => ir.Title)
             .HasMaxLength(200);
 

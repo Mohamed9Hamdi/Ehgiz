@@ -13,10 +13,6 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
 
         builder.HasKey(m => m.Id);
 
-        builder.Property(m => m.SenderId)
-            .IsRequired()
-            .HasMaxLength(450);
-
         builder.Property(m => m.Content)
             .HasColumnType("text");
 

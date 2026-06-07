@@ -12,10 +12,6 @@ public class ToolConfiguration : IEntityTypeConfiguration<Tool>
 
         builder.HasKey(t => t.Id);
 
-        builder.Property(t => t.OwnerId)
-            .IsRequired()
-            .HasMaxLength(450);
-
         builder.Property(t => t.Name)
             .IsRequired()
             .HasMaxLength(200);

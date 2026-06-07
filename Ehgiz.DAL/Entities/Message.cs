@@ -6,7 +6,7 @@ public class Message
 {
     public int Id { get; set; }
     public int ConversationId { get; set; }
-    public string SenderId { get; set; } = null!;
+    public int SenderId { get; set; }
     public string? Content { get; set; }
     public MessageStatus Status { get; set; } = MessageStatus.Sent;
     public DateTime CreatedAt { get; set; }
