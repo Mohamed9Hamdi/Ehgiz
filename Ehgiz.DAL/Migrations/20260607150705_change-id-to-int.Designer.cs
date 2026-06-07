@@ -4,6 +4,7 @@ using Ehgiz.DAL.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ehgiz.DAL.Migrations
 {
     [DbContext(typeof(EhgizDbContext))]
-    partial class EhgizDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260607150705_change-id-to-int")]
+    partial class changeidtoint
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,99 +24,6 @@ namespace Ehgiz.DAL.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("Ehgiz.DAL.Entities.ApplicationUser", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AccessFailedCount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("City")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("NormalizedEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("NormalizedUserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("ProfileImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("SecurityStamp")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("UserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedEmail")
-                        .HasDatabaseName("EmailIndex");
-
-                    b.HasIndex("NormalizedUserName")
-                        .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
-
-                    b.ToTable("AspNetUsers", (string)null);
-                });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Booking", b =>
                 {
@@ -152,6 +62,30 @@ namespace Ehgiz.DAL.Migrations
                     b.HasIndex("ToolId");
 
                     b.ToTable("Bookings", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            EndDate = new DateTime(2026, 2, 3, 0, 0, 0, 0, DateTimeKind.Utc),
+                            RenterId = 2,
+                            StartDate = new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = "Completed",
+                            ToolId = 1,
+                            TotalPrice = 225m
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            EndDate = new DateTime(2026, 3, 12, 0, 0, 0, 0, DateTimeKind.Utc),
+                            RenterId = 2,
+                            StartDate = new DateTime(2026, 3, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = "Active",
+                            ToolId = 3,
+                            TotalPrice = 150m
+                        });
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Category", b =>
@@ -243,6 +177,15 @@ namespace Ehgiz.DAL.Migrations
                     b.HasIndex("User2Id");
 
                     b.ToTable("Conversations", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            UpdatedAt = new DateTime(2026, 3, 9, 16, 0, 0, 0, DateTimeKind.Utc),
+                            User1Id = 1,
+                            User2Id = 2
+                        });
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.IssueReport", b =>
@@ -280,6 +223,18 @@ namespace Ehgiz.DAL.Migrations
                     b.HasIndex("ReporterId");
 
                     b.ToTable("IssueReports", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            BookingId = 2,
+                            CreatedAt = new DateTime(2026, 3, 11, 10, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "One of the safety locks on the ladder feels loose.",
+                            ReporterId = 2,
+                            Status = "Open",
+                            Title = "Ladder lock issue"
+                        });
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Message", b =>
@@ -314,6 +269,35 @@ namespace Ehgiz.DAL.Migrations
                     b.HasIndex("SenderId");
 
                     b.ToTable("Messages", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Content = "Hi Ahmad, is the drill still available next week?",
+                            ConversationId = 1,
+                            CreatedAt = new DateTime(2026, 1, 20, 9, 0, 0, 0, DateTimeKind.Utc),
+                            SenderId = 2,
+                            Status = "Read"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Content = "Yes, it is available. Let me know your dates.",
+                            ConversationId = 1,
+                            CreatedAt = new DateTime(2026, 1, 20, 9, 15, 0, 0, DateTimeKind.Utc),
+                            SenderId = 1,
+                            Status = "Read"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Content = "Can I pick up the ladder on March 10th?",
+                            ConversationId = 1,
+                            CreatedAt = new DateTime(2026, 3, 8, 11, 0, 0, 0, DateTimeKind.Utc),
+                            SenderId = 2,
+                            Status = "Delivered"
+                        });
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Notification", b =>
@@ -347,6 +331,35 @@ namespace Ehgiz.DAL.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Notifications", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Content = "Your booking for Bosch Professional Drill has been completed.",
+                            CreatedAt = new DateTime(2026, 2, 4, 8, 0, 0, 0, DateTimeKind.Utc),
+                            IsRead = true,
+                            Type = "BookingUpdate",
+                            UserId = 2
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Content = "Payment of 150 EGP is held in escrow for your ladder booking.",
+                            CreatedAt = new DateTime(2026, 3, 9, 14, 35, 0, 0, DateTimeKind.Utc),
+                            IsRead = false,
+                            Type = "PaymentUpdate",
+                            UserId = 2
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Content = "You have a new message from Sara Mohamed.",
+                            CreatedAt = new DateTime(2026, 3, 8, 11, 0, 0, 0, DateTimeKind.Utc),
+                            IsRead = false,
+                            Type = "NewMessage",
+                            UserId = 1
+                        });
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Payment", b =>
@@ -384,6 +397,28 @@ namespace Ehgiz.DAL.Migrations
                         .IsUnique();
 
                     b.ToTable("Payments", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Amount = 225m,
+                            BookingId = 1,
+                            EscrowStatus = "Released",
+                            PaidAt = new DateTime(2026, 1, 15, 10, 0, 0, 0, DateTimeKind.Utc),
+                            PaymentMethod = "CreditCard",
+                            PaymentStatus = "Completed"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Amount = 150m,
+                            BookingId = 2,
+                            EscrowStatus = "Held",
+                            PaidAt = new DateTime(2026, 3, 9, 14, 30, 0, 0, DateTimeKind.Utc),
+                            PaymentMethod = "Wallet",
+                            PaymentStatus = "Completed"
+                        });
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Review", b =>
@@ -411,6 +446,16 @@ namespace Ehgiz.DAL.Migrations
                     b.HasIndex("BookingId");
 
                     b.ToTable("Reviews", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            BookingId = 1,
+                            Comment = "Excellent drill, worked perfectly for my home project.",
+                            CreatedAt = new DateTime(2026, 2, 4, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Rating = 5
+                        });
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Tool", b =>
@@ -467,6 +512,68 @@ namespace Ehgiz.DAL.Migrations
                     b.HasIndex("OwnerId");
 
                     b.ToTable("Tools", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CategoryId = 1,
+                            Condition = "Good",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "18V cordless drill with two batteries and charger.",
+                            InsurancePrice = 150m,
+                            IsAvailable = true,
+                            Location = "Cairo, Maadi",
+                            Name = "Bosch Professional Drill",
+                            OwnerId = 1,
+                            PricePerDay = 75m,
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CategoryId = 2,
+                            Condition = "Excellent",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "1600W electric lawn mower suitable for medium gardens.",
+                            InsurancePrice = 200m,
+                            IsAvailable = true,
+                            Location = "Cairo, Maadi",
+                            Name = "Electric Lawn Mower",
+                            OwnerId = 1,
+                            PricePerDay = 90m,
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CategoryId = 3,
+                            Condition = "Good",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "6-meter extension ladder with safety locks.",
+                            InsurancePrice = 100m,
+                            IsAvailable = false,
+                            Location = "Alexandria, Smouha",
+                            Name = "Aluminum Extension Ladder",
+                            OwnerId = 3,
+                            PricePerDay = 50m,
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CategoryId = 4,
+                            Condition = "Good",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "2000 PSI pressure washer for outdoor cleaning.",
+                            InsurancePrice = 120m,
+                            IsAvailable = true,
+                            Location = "Alexandria, Smouha",
+                            Name = "Pressure Washer",
+                            OwnerId = 3,
+                            PricePerDay = 65m,
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        });
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.ToolImage", b =>
@@ -490,9 +597,41 @@ namespace Ehgiz.DAL.Migrations
                     b.HasIndex("ToolId");
 
                     b.ToTable("ToolImages", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            ImageUrl = "https://cdn.ehgiz.com/tools/drill-1.jpg",
+                            ToolId = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            ImageUrl = "https://cdn.ehgiz.com/tools/drill-2.jpg",
+                            ToolId = 1
+                        },
+                        new
+                        {
+                            Id = 3,
+                            ImageUrl = "https://cdn.ehgiz.com/tools/mower-1.jpg",
+                            ToolId = 2
+                        },
+                        new
+                        {
+                            Id = 4,
+                            ImageUrl = "https://cdn.ehgiz.com/tools/ladder-1.jpg",
+                            ToolId = 3
+                        },
+                        new
+                        {
+                            Id = 5,
+                            ImageUrl = "https://cdn.ehgiz.com/tools/washer-1.jpg",
+                            ToolId = 4
+                        });
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<int>", b =>
+            modelBuilder.Entity("Ehgiz.DAL.Entities.User", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -500,134 +639,86 @@ namespace Ehgiz.DAL.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
-                    b.Property<string>("NormalizedName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedName")
-                        .IsUnique()
-                        .HasDatabaseName("RoleNameIndex")
-                        .HasFilter("[NormalizedName] IS NOT NULL");
-
-                    b.ToTable("AspNetRoles", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
-                {
-                    b.Property<int>("Id")
+                    b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("RoleId")
-                        .HasColumnType("int");
+                    b.Property<string>("ProfileImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RoleId");
+                    b.ToTable("AspNetUsers", (string)null);
 
-                    b.ToTable("AspNetRoleClaims", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<int>", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("AspNetUserClaims", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
-                {
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("ProviderKey")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("LoginProvider", "ProviderKey");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("AspNetUserLogins", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<int>", b =>
-                {
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RoleId")
-                        .HasColumnType("int");
-
-                    b.HasKey("UserId", "RoleId");
-
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("AspNetUserRoles", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
-                {
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Value")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("UserId", "LoginProvider", "Name");
-
-                    b.ToTable("AspNetUserTokens", (string)null);
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Address = "12 Nile Street",
+                            City = "Cairo",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "ahmad.hassan@ehgiz.com",
+                            FullName = "Ahmad Hassan",
+                            IsActive = true,
+                            PhoneNumber = "+201001234567",
+                            ProfileImageUrl = "https://cdn.ehgiz.com/users/ahmad.jpg"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Address = "45 Garden City",
+                            City = "Giza",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "sara.mohamed@ehgiz.com",
+                            FullName = "Sara Mohamed",
+                            IsActive = true,
+                            PhoneNumber = "+201076543210",
+                            ProfileImageUrl = "https://cdn.ehgiz.com/users/sara.jpg"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Address = "8 Alexandria Road",
+                            City = "Alexandria",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "omar.ali@ehgiz.com",
+                            FullName = "Omar Ali",
+                            IsActive = true,
+                            PhoneNumber = "+201112223344",
+                            ProfileImageUrl = "https://cdn.ehgiz.com/users/omar.jpg"
+                        });
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Booking", b =>
                 {
-                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", "Renter")
+                    b.HasOne("Ehgiz.DAL.Entities.User", "Renter")
                         .WithMany("Bookings")
                         .HasForeignKey("RenterId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -646,13 +737,13 @@ namespace Ehgiz.DAL.Migrations
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Conversation", b =>
                 {
-                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", "User1")
+                    b.HasOne("Ehgiz.DAL.Entities.User", "User1")
                         .WithMany("ConversationsAsUser1")
                         .HasForeignKey("User1Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", "User2")
+                    b.HasOne("Ehgiz.DAL.Entities.User", "User2")
                         .WithMany("ConversationsAsUser2")
                         .HasForeignKey("User2Id")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -671,7 +762,7 @@ namespace Ehgiz.DAL.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", "Reporter")
+                    b.HasOne("Ehgiz.DAL.Entities.User", "Reporter")
                         .WithMany("IssueReports")
                         .HasForeignKey("ReporterId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -690,7 +781,7 @@ namespace Ehgiz.DAL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", "Sender")
+                    b.HasOne("Ehgiz.DAL.Entities.User", "Sender")
                         .WithMany("SentMessages")
                         .HasForeignKey("SenderId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -703,7 +794,7 @@ namespace Ehgiz.DAL.Migrations
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Notification", b =>
                 {
-                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", "User")
+                    b.HasOne("Ehgiz.DAL.Entities.User", "User")
                         .WithMany("Notifications")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -742,7 +833,7 @@ namespace Ehgiz.DAL.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", "Owner")
+                    b.HasOne("Ehgiz.DAL.Entities.User", "Owner")
                         .WithMany("OwnedTools")
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -762,74 +853,6 @@ namespace Ehgiz.DAL.Migrations
                         .IsRequired();
 
                     b.Navigation("Tool");
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<int>", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<int>", b =>
-                {
-                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
-                {
-                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<int>", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<int>", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
-                {
-                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Ehgiz.DAL.Entities.ApplicationUser", b =>
-                {
-                    b.Navigation("Bookings");
-
-                    b.Navigation("ConversationsAsUser1");
-
-                    b.Navigation("ConversationsAsUser2");
-
-                    b.Navigation("IssueReports");
-
-                    b.Navigation("Notifications");
-
-                    b.Navigation("OwnedTools");
-
-                    b.Navigation("SentMessages");
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Booking", b =>
@@ -856,6 +879,23 @@ namespace Ehgiz.DAL.Migrations
                     b.Navigation("Bookings");
 
                     b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("Ehgiz.DAL.Entities.User", b =>
+                {
+                    b.Navigation("Bookings");
+
+                    b.Navigation("ConversationsAsUser1");
+
+                    b.Navigation("ConversationsAsUser2");
+
+                    b.Navigation("IssueReports");
+
+                    b.Navigation("Notifications");
+
+                    b.Navigation("OwnedTools");
+
+                    b.Navigation("SentMessages");
                 });
 #pragma warning restore 612, 618
         }

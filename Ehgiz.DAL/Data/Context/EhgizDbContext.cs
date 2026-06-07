@@ -1,16 +1,17 @@
 using Ehgiz.DAL.Entities;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ehgiz.DAL.Data;
 
-public class EhgizDbContext : DbContext
+public class EhgizDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
 {
     public EhgizDbContext(DbContextOptions<EhgizDbContext> options)
         : base(options)
     {
     }
 
-    public DbSet<User> Users => Set<User>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Tool> Tools => Set<Tool>();
     public DbSet<ToolImage> ToolImages => Set<ToolImage>();
@@ -24,6 +25,7 @@ public class EhgizDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(EhgizDbContext).Assembly);
     }
 }
