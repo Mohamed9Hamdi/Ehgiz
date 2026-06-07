@@ -4,6 +4,7 @@ using Ehgiz.DAL.Interfaces.Repositories;
 using Ehgiz.DAL.Repositories;
 using Ehgiz.DAL.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
+using Ehgiz.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,8 @@ builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IIssueReportRepository, IssueReportRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+builder.Services.AddApplicationServices();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
