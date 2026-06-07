@@ -14,3 +14,5 @@ public class BookingIntervalDto
     public decimal Price { get; set; }
     public TimeSpan Interval { get; set; }
 }
+
+// test commit
