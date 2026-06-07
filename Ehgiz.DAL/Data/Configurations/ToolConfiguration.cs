@@ -12,10 +12,6 @@ public class ToolConfiguration : IEntityTypeConfiguration<Tool>
 
         builder.HasKey(t => t.Id);
 
-        builder.Property(t => t.OwnerId)
-            .IsRequired()
-            .HasMaxLength(450);
-
         builder.Property(t => t.Name)
             .IsRequired()
             .HasMaxLength(200);
@@ -54,67 +50,5 @@ public class ToolConfiguration : IEntityTypeConfiguration<Tool>
             .WithMany(c => c.Tools)
             .HasForeignKey(t => t.CategoryId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasData(
-            new Tool
-            {
-                Id = 1,
-                OwnerId = SeedData.Users.AhmadId,
-                CategoryId = 1,
-                Name = "Bosch Professional Drill",
-                Description = "18V cordless drill with two batteries and charger.",
-                PricePerDay = 75m,
-                InsurancePrice = 150m,
-                Condition = "Good",
-                Location = "Cairo, Maadi",
-                IsAvailable = true,
-                CreatedAt = SeedData.SeedDate,
-                UpdatedAt = SeedData.SeedDate
-            },
-            new Tool
-            {
-                Id = 2,
-                OwnerId = SeedData.Users.AhmadId,
-                CategoryId = 2,
-                Name = "Electric Lawn Mower",
-                Description = "1600W electric lawn mower suitable for medium gardens.",
-                PricePerDay = 90m,
-                InsurancePrice = 200m,
-                Condition = "Excellent",
-                Location = "Cairo, Maadi",
-                IsAvailable = true,
-                CreatedAt = SeedData.SeedDate,
-                UpdatedAt = SeedData.SeedDate
-            },
-            new Tool
-            {
-                Id = 3,
-                OwnerId = SeedData.Users.OmarId,
-                CategoryId = 3,
-                Name = "Aluminum Extension Ladder",
-                Description = "6-meter extension ladder with safety locks.",
-                PricePerDay = 50m,
-                InsurancePrice = 100m,
-                Condition = "Good",
-                Location = "Alexandria, Smouha",
-                IsAvailable = false,
-                CreatedAt = SeedData.SeedDate,
-                UpdatedAt = SeedData.SeedDate
-            },
-            new Tool
-            {
-                Id = 4,
-                OwnerId = SeedData.Users.OmarId,
-                CategoryId = 4,
-                Name = "Pressure Washer",
-                Description = "2000 PSI pressure washer for outdoor cleaning.",
-                PricePerDay = 65m,
-                InsurancePrice = 120m,
-                Condition = "Good",
-                Location = "Alexandria, Smouha",
-                IsAvailable = true,
-                CreatedAt = SeedData.SeedDate,
-                UpdatedAt = SeedData.SeedDate
-            });
     }
 }

@@ -4,6 +4,8 @@ using Mapster;
 using MapsterMapper;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+using Ehgiz.Application.Seed;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Ehgiz.Application;
 
@@ -17,6 +19,7 @@ public static class DependencyInjection
         services.AddSingleton(config);
         services.AddScoped<IMapper, ServiceMapper>();
 
+        services.AddScoped<DatabaseSeeder>();
         // Register Services
         services.AddScoped<IBookingService, BookingService>();
         

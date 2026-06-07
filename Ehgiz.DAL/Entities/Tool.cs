@@ -3,7 +3,7 @@ namespace Ehgiz.DAL.Entities;
 public class Tool
 {
     public int Id { get; set; }
-    public string OwnerId { get; set; } = null!;
+    public int OwnerId { get; set; }
     public int CategoryId { get; set; }
     public string Name { get; set; } = null!;
     public string? Description { get; set; }
@@ -15,7 +15,7 @@ public class Tool
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
-    public User Owner { get; set; } = null!;
+    public ApplicationUser Owner { get; set; } = null!;
     public Category Category { get; set; } = null!;
     public ICollection<ToolImage> Images { get; set; } = [];
     public ICollection<Booking> Bookings { get; set; } = [];
