@@ -15,7 +15,7 @@ public class Tool
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
-    public User Owner { get; set; } = null!;
+    public ApplicationUser Owner { get; set; } = null!;
     public Category Category { get; set; } = null!;
     public ICollection<ToolImage> Images { get; set; } = [];
     public ICollection<Booking> Bookings { get; set; } = [];

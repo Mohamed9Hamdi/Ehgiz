@@ -12,5 +12,5 @@ public class Message
     public DateTime CreatedAt { get; set; }
 
     public Conversation Conversation { get; set; } = null!;
-    public User Sender { get; set; } = null!;
+    public ApplicationUser Sender { get; set; } = null!;
 }

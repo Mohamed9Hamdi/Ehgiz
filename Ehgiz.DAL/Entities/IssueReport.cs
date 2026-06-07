@@ -13,5 +13,5 @@ public class IssueReport
     public DateTime CreatedAt { get; set; }
 
     public Booking Booking { get; set; } = null!;
-    public User Reporter { get; set; } = null!;
+    public ApplicationUser Reporter { get; set; } = null!;
 }

@@ -24,14 +24,5 @@ public class ConversationConfiguration : IEntityTypeConfiguration<Conversation>
             .WithMany(u => u.ConversationsAsUser2)
             .HasForeignKey(c => c.User2Id)
             .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasData(
-            new Conversation
-            {
-                Id = 1,
-                User1Id = SeedData.Users.AhmadId,
-                User2Id = SeedData.Users.SaraId,
-                UpdatedAt = new DateTime(2026, 3, 9, 16, 0, 0, DateTimeKind.Utc)
-            });
     }
 }

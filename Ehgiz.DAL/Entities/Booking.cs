@@ -14,7 +14,7 @@ public class Booking
     public DateTime CreatedAt { get; set; }
 
     public Tool Tool { get; set; } = null!;
-    public User Renter { get; set; } = null!;
+    public ApplicationUser Renter { get; set; } = null!;
     public Payment? Payment { get; set; }
     public ICollection<Review> Reviews { get; set; } = [];
     public ICollection<IssueReport> IssueReports { get; set; } = [];

@@ -7,7 +7,7 @@ public class Conversation
     public int User2Id { get; set; }
     public DateTime UpdatedAt { get; set; }
 
-    public User User1 { get; set; } = null!;
-    public User User2 { get; set; } = null!;
+    public ApplicationUser User1 { get; set; } = null!;
+    public ApplicationUser User2 { get; set; } = null!;
     public ICollection<Message> Messages { get; set; } = [];
 }
