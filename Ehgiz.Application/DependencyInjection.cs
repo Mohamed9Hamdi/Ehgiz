@@ -1,5 +1,4 @@
 using Ehgiz.Application.Interfaces;
-using Ehgiz.Application.Services;
 using Mapster;
 using MapsterMapper;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +20,7 @@ public static class DependencyInjection
 
         services.AddScoped<DatabaseSeeder>();
         // Register Services
-        services.AddScoped<IBookingService, BookingService>();
+       
         
         return services;
     }
