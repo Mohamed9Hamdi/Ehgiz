@@ -1,3 +1,4 @@
+using Ehgiz.Application.Common;
 using Ehgiz.Application.DTOs.Auth;
 using Ehgiz.Application.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -24,9 +25,15 @@ public class AuthController : ControllerBase
         var result = await _authService.RegisterAsync(dto);
 
         if (!result.Succeeded)
-            return BadRequest(new { errors = result.Errors });
+        {
+            return BadRequest(ApiResponse<object>.Fail(
+                "Registration failed.",
+                result.Errors.ToList()));
+        }
 
-        return StatusCode(StatusCodes.Status201Created, new { message = result.Message });
+        return StatusCode(
+            StatusCodes.Status201Created,
+            ApiResponse<object>.Success(null!, result.Message!));
     }
 
     [HttpPost("login")]
@@ -34,11 +41,15 @@ public class AuthController : ControllerBase
     {
         var tokens = await _authService.LoginAsync(dto);
         if (tokens is null)
-            return Unauthorized();
+        {
+            return Unauthorized(ApiResponse<LoginResponseDTO>.Fail("Invalid email or password."));
+        }
 
         SetRefreshCookie(tokens.RawRefreshToken);
 
-        return Ok(new LoginResponseDTO(tokens.AccessToken, tokens.AccessTokenExpiresAt));
+        return Ok(ApiResponse<LoginResponseDTO>.Success(
+            new LoginResponseDTO(tokens.AccessToken, tokens.AccessTokenExpiresAt),
+            "Login successful"));
     }
 
     [HttpPost("refresh")]
@@ -47,19 +58,21 @@ public class AuthController : ControllerBase
         if (!Request.Cookies.TryGetValue(RefreshCookieName, out var rawRefreshToken) ||
             string.IsNullOrWhiteSpace(rawRefreshToken))
         {
-            return Unauthorized();
+            return Unauthorized(ApiResponse<LoginResponseDTO>.Fail("Invalid or expired refresh token."));
         }
 
         var tokens = await _authService.RefreshSessionAsync(rawRefreshToken);
         if (tokens is null)
         {
             DeleteRefreshCookie();
-            return Unauthorized();
+            return Unauthorized(ApiResponse<LoginResponseDTO>.Fail("Invalid or expired refresh token."));
         }
 
         SetRefreshCookie(tokens.RawRefreshToken);
 
-        return Ok(new LoginResponseDTO(tokens.AccessToken, tokens.AccessTokenExpiresAt));
+        return Ok(ApiResponse<LoginResponseDTO>.Success(
+            new LoginResponseDTO(tokens.AccessToken, tokens.AccessTokenExpiresAt),
+            "Token refreshed successfully"));
     }
 
     [HttpPost("logout")]
