@@ -30,7 +30,7 @@ builder.Services.AddApplicationServices();
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-var app = builder.Build();
+var app = builder.Build(); 
 
 if (app.Environment.IsDevelopment())
 {
@@ -41,6 +41,7 @@ if (app.Environment.IsDevelopment())
     await seeder.SeedAsync();
 }
 
+app.UseMiddleware<ExceptionHandlingMiddleware>(); 
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
