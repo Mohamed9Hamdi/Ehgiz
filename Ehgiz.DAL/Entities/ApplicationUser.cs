@@ -18,4 +18,5 @@ public class ApplicationUser : IdentityUser<int>
     public ICollection<Message> SentMessages { get; set; } = [];
     public ICollection<Notification> Notifications { get; set; } = [];
     public ICollection<IssueReport> IssueReports { get; set; } = [];
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
 }
