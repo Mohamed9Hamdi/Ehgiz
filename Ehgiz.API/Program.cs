@@ -28,8 +28,6 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<int>>(options =>
 builder.Services.AddDalServices();
 builder.Services.AddApplicationServices();
 
-builder.Services.AddApplicationServices();
-
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
