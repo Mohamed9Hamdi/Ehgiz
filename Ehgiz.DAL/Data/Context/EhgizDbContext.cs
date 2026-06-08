@@ -22,6 +22,7 @@ public class EhgizDbContext : IdentityDbContext<ApplicationUser, IdentityRole<in
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<IssueReport> IssueReports => Set<IssueReport>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
