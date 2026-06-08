@@ -1,10 +1,14 @@
+
+using Mapster;
+using MapsterMapper;
+using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 using Ehgiz.Application.Seed;
 using Ehgiz.Application.Services;
 using Ehgiz.Application.Settings;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Ehgiz.Application;
 
 public static class DependencyInjection
 {
@@ -15,8 +19,16 @@ public static class DependencyInjection
         services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<DatabaseSeeder>();
+        // Configure Mapster
+        var config = TypeAdapterConfig.GlobalSettings;
+        config.Scan(Assembly.GetExecutingAssembly());
+        services.AddSingleton(config);
+        services.AddScoped<IMapper, ServiceMapper>();
 
+        services.AddScoped<DatabaseSeeder>();
+        // Register Services
+       
+        
         return services;
     }
 }
