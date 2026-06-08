@@ -5,6 +5,7 @@ using Ehgiz.DAL.Data;
 using Ehgiz.DAL.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Ehgiz.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
