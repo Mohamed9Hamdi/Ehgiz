@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using Ehgiz.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,7 +76,13 @@ builder.Services.AddCors(o => o.AddPolicy("Angular", p =>
 builder.Services.AddDalServices();
 builder.Services.AddApplicationServices(builder.Configuration);
 
+// Enable raw body reading for Stripe webhook signature verification
 builder.Services.AddControllers();
+builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 10 * 1024 * 1024);
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+{
+    o.BufferBody = true;
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {

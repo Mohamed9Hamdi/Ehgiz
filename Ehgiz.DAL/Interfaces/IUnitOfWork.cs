@@ -16,6 +16,8 @@ public interface IUnitOfWork : IAsyncDisposable
     IMessageRepository Messages { get; }
     INotificationRepository Notifications { get; }
     IIssueReportRepository IssueReports { get; }
+    IWalletRepository Wallets { get; }
+    IRepository<Ehgiz.DAL.Entities.WalletTransaction> WalletTransactions { get; }
 
     Task<int> SaveChangesAsync();
     Task<IDbContextTransaction> BeginTransactionAsync();

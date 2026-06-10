@@ -1,6 +1,8 @@
 using Ehgiz.DAL.Data;
+using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Interfaces;
 using Ehgiz.DAL.Interfaces.Repositories;
+using Ehgiz.DAL.Repositories;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Ehgiz.DAL.UnitOfWork;
@@ -21,9 +23,11 @@ public class UnitOfWork : IUnitOfWork
         IConversationRepository conversations,
         IMessageRepository messages,
         INotificationRepository notifications,
-        IIssueReportRepository issueReports)
+        IIssueReportRepository issueReports,
+        IWalletRepository wallets)
     {
         _context = context;
+        WalletTransactions = new Repository<WalletTransaction>(context);
         Users = users;
         Categories = categories;
         Tools = tools;
@@ -35,6 +39,7 @@ public class UnitOfWork : IUnitOfWork
         Messages = messages;
         Notifications = notifications;
         IssueReports = issueReports;
+        Wallets = wallets;
     }
 
     public IUserRepository Users { get; }
@@ -58,6 +63,10 @@ public class UnitOfWork : IUnitOfWork
     public INotificationRepository Notifications { get; }
 
     public IIssueReportRepository IssueReports { get; }
+
+    public IWalletRepository Wallets { get; }
+
+    public IRepository<WalletTransaction> WalletTransactions { get; }
 
     public Task<int> SaveChangesAsync() =>
         _context.SaveChangesAsync();
