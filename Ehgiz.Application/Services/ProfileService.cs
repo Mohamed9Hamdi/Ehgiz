@@ -1,0 +1,27 @@
+using Ehgiz.Application.DTOs.Profile;
+using Ehgiz.DAL.Entities;
+using MapsterMapper;
+using Microsoft.AspNetCore.Identity;
+
+namespace Ehgiz.Application.Services;
+
+public class ProfileService : IProfileService
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IMapper _mapper;
+
+    public ProfileService(UserManager<ApplicationUser> userManager, IMapper mapper)
+    {
+        _userManager = userManager;
+        _mapper = mapper;
+    }
+
+    public async Task<UserProfileDTO?> GetProfileAsync(int userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null || !user.IsActive)
+            return null;
+
+        return _mapper.Map<UserProfileDTO>(user);
+    }
+}
