@@ -33,7 +33,7 @@ public class WalletService : IWalletService
             TotalBalance: wallet.Balance + wallet.HeldBalance);
     }
 
-    public async Task<TopUpResponse> InitiateTopUpAsync(int userId, TopUpRequest request)
+    public async Task<TopUpResponse> InitiateTopUpAsync(int userId, TopUpRequest request, string returnUrl)
     {
         if (request.Amount <= 0)
             throw new InvalidOperationException("Top-up amount must be greater than zero.");
@@ -49,11 +49,13 @@ public class WalletService : IWalletService
         }
 
         var description = $"Wallet top-up for user {userId}";
-        var clientSecret = await _stripe.CreatePaymentIntentAsync(
+        var clientSecret = await _stripe.CreateCheckoutSessionAsync(
             request.Amount,
             request.Currency,
             user.StripeCustomerId,
-            description);
+            description,
+            userId,
+            returnUrl);
 
         return new TopUpResponse(
             ClientSecret: clientSecret,
@@ -61,7 +63,7 @@ public class WalletService : IWalletService
             Currency: request.Currency);
     }
 
-    public async Task CreditWalletFromStripeAsync(string paymentIntentId, int userId, decimal amount)
+    public async Task CreditWalletFromStripeAsync(string sessionId, int userId, decimal amount)
     {
         var wallet = await GetOrCreateWalletAsync(userId);
 
@@ -73,8 +75,8 @@ public class WalletService : IWalletService
             WalletId = wallet.Id,
             Amount = amount,
             Type = WalletTransactionType.TopUp,
-            Reference = paymentIntentId,
-            Description = $"Wallet top-up via Stripe (PI: {paymentIntentId})",
+            Reference = sessionId,
+            Description = $"Wallet top-up via Stripe Checkout (Session: {sessionId})",
             CreatedAt = DateTime.UtcNow
         });
 

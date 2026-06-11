@@ -2,9 +2,9 @@ namespace Ehgiz.Application.Interfaces;
 
 public interface IStripeService
 {
-    /// <summary>Creates a PaymentIntent for wallet top-up. Returns the client secret.</summary>
-    Task<string> CreatePaymentIntentAsync(decimal amount, string currency,
-        string customerId, string description);
+    /// <summary>Creates an embedded Checkout Session for wallet top-up. Returns the client secret.</summary>
+    Task<string> CreateCheckoutSessionAsync(decimal amount, string currency,
+        string customerId, string description, int userId, string returnUrl);
 
     /// <summary>Gets or creates a Stripe Customer for the user.</summary>
     Task<string> CreateOrGetCustomerAsync(string email, string fullName);
@@ -20,6 +20,6 @@ public interface IStripeService
     Task TransferToConnectAccountAsync(string stripeAccountId, decimal amount,
         string currency, string description);
 
-    /// <summary>Fully refunds a PaymentIntent.</summary>
-    Task RefundPaymentIntentAsync(string paymentIntentId);
+    /// <summary>Refunds the payment associated with a Checkout Session.</summary>
+    Task RefundCheckoutSessionAsync(string sessionId);
 }

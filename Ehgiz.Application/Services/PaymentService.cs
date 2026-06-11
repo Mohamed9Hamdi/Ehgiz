@@ -38,25 +38,25 @@ public class PaymentService : IPaymentService
             throw new InvalidOperationException($"Stripe webhook validation failed: {ex.Message}");
         }
 
-        if (stripeEvent.Type == EventTypes.PaymentIntentSucceeded)
+        if (stripeEvent.Type == "checkout.session.completed")
         {
-            var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-            if (paymentIntent is null) return;
+            var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
+            if (session is null) return;
 
             // Extract userId from metadata
-            if (!paymentIntent.Metadata.TryGetValue("userId", out var userIdStr) ||
+            if (!session.Metadata.TryGetValue("userId", out var userIdStr) ||
                 !int.TryParse(userIdStr, out var userId))
                 return;
 
-            var amount = paymentIntent.Amount / 100m;  // convert cents to dollars
+            var amount = (session.AmountTotal ?? 0) / 100m;  // convert cents to dollars
 
             await _walletService.CreditWalletFromStripeAsync(
-                paymentIntent.Id, userId, amount);
+                session.PaymentIntentId!, userId, amount);
         }
-        else if (stripeEvent.Type == EventTypes.PaymentIntentPaymentFailed)
+        else if (stripeEvent.Type == "checkout.session.expired")
         {
             // Log / notify — no wallet change needed
-            var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
+            var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
             // Could emit a notification here in the future
         }
     }

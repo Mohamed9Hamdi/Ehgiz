@@ -42,9 +42,11 @@ public class WalletController : ControllerBase
     [HttpPost("topup")]
     public async Task<IActionResult> InitiateTopUp([FromBody] TopUpRequest dto)
     {
-        var result = await _walletService.InitiateTopUpAsync(CurrentUserId, dto);
+        var returnUrl = $"{Request.Scheme}://{Request.Host}/api/wallet/topup/return";
+
+        var result = await _walletService.InitiateTopUpAsync(CurrentUserId, dto, returnUrl);
         return Ok(ApiResponse<TopUpResponse>.Success(result,
-            "Payment intent created. Use the clientSecret with Stripe.js to confirm payment."));
+            "Checkout session created. Use the clientSecret with stripe.initEmbeddedCheckout() to render the payment form."));
     }
 
     // GET api/wallet/connect/onboard

@@ -1,32 +1,47 @@
 using Ehgiz.Application.Interfaces;
 using Stripe;
+using Stripe.Checkout;
 
 namespace Ehgiz.Application.Services;
 
 public class StripeService : IStripeService
 {
-    public async Task<string> CreatePaymentIntentAsync(
-        decimal amount, string currency, string customerId, string description)
+    public async Task<string> CreateCheckoutSessionAsync(
+        decimal amount, string currency, string customerId,
+        string description, int userId, string returnUrl)
     {
-        var options = new PaymentIntentCreateOptions
+        var options = new SessionCreateOptions
         {
-            Amount = (long)(amount * 100),   // Stripe works in cents
-            Currency = currency,
+            UiMode = "embedded",
+            Mode = "payment",
             Customer = customerId,
-            Description = description,
-            AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
-            {
-                Enabled = true
-            },
+            ReturnUrl = returnUrl + "?session_id={CHECKOUT_SESSION_ID}",
+            LineItems =
+            [
+                new SessionLineItemOptions
+                {
+                    PriceData = new SessionLineItemPriceDataOptions
+                    {
+                        Currency = currency,
+                        UnitAmount = (long)(amount * 100),
+                        ProductData = new SessionLineItemPriceDataProductDataOptions
+                        {
+                            Name = description
+                        }
+                    },
+                    Quantity = 1
+                }
+            ],
             Metadata = new Dictionary<string, string>
             {
+                { "userId", userId.ToString() },
                 { "description", description }
             }
         };
 
-        var service = new PaymentIntentService();
-        var intent = await service.CreateAsync(options);
-        return intent.ClientSecret!;
+        var service = new SessionService();
+        var session = await service.CreateAsync(options);
+        return session.ClientSecret!;
     }
 
     public async Task<string> CreateOrGetCustomerAsync(string email, string fullName)
@@ -101,14 +116,19 @@ public class StripeService : IStripeService
         await service.CreateAsync(options);
     }
 
-    public async Task RefundPaymentIntentAsync(string paymentIntentId)
+    public async Task RefundCheckoutSessionAsync(string sessionId)
     {
-        var options = new RefundCreateOptions
+        // Retrieve the Checkout Session to get the underlying PaymentIntent ID
+        var sessionService = new SessionService();
+        var session = await sessionService.GetAsync(sessionId);
+
+        var refundOptions = new RefundCreateOptions
         {
-            PaymentIntent = paymentIntentId
+            PaymentIntent = session.PaymentIntentId
         };
 
-        var service = new RefundService();
-        await service.CreateAsync(options);
+        var refundService = new RefundService();
+        await refundService.CreateAsync(refundOptions);
     }
 }
+
