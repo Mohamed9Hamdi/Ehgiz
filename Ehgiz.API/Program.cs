@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using Ehgiz.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,7 +72,7 @@ builder.Services.AddCors(o => o.AddPolicy("Angular", p =>
      .AllowAnyHeader()
      .AllowAnyMethod()
      .AllowCredentials()));
-
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddDalServices();
 builder.Services.AddApplicationServices(builder.Configuration);
 
@@ -119,7 +118,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
+app.UseStaticFiles();
 app.UseCors("Angular");
 
 app.UseAuthentication();
