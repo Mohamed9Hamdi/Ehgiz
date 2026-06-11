@@ -39,13 +39,8 @@ public class BookingService : IBookingService
             throw new InvalidOperationException("You cannot rent your own tool.");
 
         // --- Check overlapping bookings ---
-        var allBookings = await _uow.Bookings.GetAllAsync();
-        var hasConflict = allBookings.Any(b =>
-            b.ToolId == dto.ToolId &&
-            b.Status != BookingStatus.Cancelled &&
-            b.Status != BookingStatus.Rejected &&
-            dto.StartDate < b.EndDate &&
-            dto.EndDate > b.StartDate);
+        var hasConflict = await _uow.Bookings
+            .HasOverlappingBookingAsync(dto.ToolId, dto.StartDate, dto.EndDate);
 
         if (hasConflict)
             throw new InvalidOperationException("The tool is already booked for the selected dates.");

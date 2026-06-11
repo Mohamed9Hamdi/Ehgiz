@@ -7,11 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class WalletRepository : Repository<Wallet>, IWalletRepository
 {
-    private readonly EhgizDbContext _context;
-
     public WalletRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public Task<Wallet?> GetByUserIdAsync(int userId) =>
