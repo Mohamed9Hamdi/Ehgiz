@@ -216,6 +216,11 @@ csx/
 ecf/
 rcf/
 
+
+# .gitignore
+.env
+*.env
+
 # Windows Store app package directories and files
 AppPackages/
 BundleArtifacts/
