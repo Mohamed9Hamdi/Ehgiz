@@ -12,6 +12,10 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Ehgiz.Application;
 
+
+
+DotNetEnv.Env.Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<EhgizDbContext>(options =>
