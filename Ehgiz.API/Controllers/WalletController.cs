@@ -9,7 +9,7 @@ namespace Ehgiz.API.Controllers;
 
 [ApiController]
 [Route("api/wallet")]
-[Authorize]
+// [Authorize]
 public class WalletController : ControllerBase
 {
     private readonly IWalletService _walletService;
@@ -20,7 +20,8 @@ public class WalletController : ControllerBase
     }
 
     private int CurrentUserId =>
-        int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        // int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        4;
 
     // GET api/wallet
     [HttpGet]
@@ -42,7 +43,7 @@ public class WalletController : ControllerBase
     [HttpPost("topup")]
     public async Task<IActionResult> InitiateTopUp([FromBody] TopUpRequest dto)
     {
-        var returnUrl = $"{Request.Scheme}://{Request.Host}/api/wallet/topup/return";
+        var returnUrl = $"http://localhost:4200/wallet/topup/return";
 
         var result = await _walletService.InitiateTopUpAsync(CurrentUserId, dto, returnUrl);
         return Ok(ApiResponse<TopUpResponse>.Success(result,

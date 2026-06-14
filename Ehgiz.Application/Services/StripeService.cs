@@ -12,7 +12,7 @@ public class StripeService : IStripeService
     {
         var options = new SessionCreateOptions
         {
-            UiMode = "embedded",
+            UiMode = "embedded_page",
             Mode = "payment",
             Customer = customerId,
             ReturnUrl = returnUrl + "?session_id={CHECKOUT_SESSION_ID}",
