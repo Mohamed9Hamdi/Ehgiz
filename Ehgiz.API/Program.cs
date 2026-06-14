@@ -25,7 +25,7 @@ builder.Services.AddDbContext<EhgizDbContext>(options =>
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole<int>>(options =>
 {
-    options.Password.RequiredLength = 8;
+    options.Password.RequiredLength = 7;
     options.Password.RequireDigit = true;
     options.Password.RequireUppercase = false;
     options.Password.RequireLowercase = true;
