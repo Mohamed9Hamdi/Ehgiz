@@ -3,6 +3,7 @@ using Mapster;
 using MapsterMapper;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Seed;
 using Ehgiz.Application.Services;
 using Ehgiz.Application.Settings;

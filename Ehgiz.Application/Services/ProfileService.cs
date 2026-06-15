@@ -1,4 +1,5 @@
 using Ehgiz.Application.DTOs.Profile;
+using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Entities;
 using MapsterMapper;
 using Microsoft.AspNetCore.Identity;

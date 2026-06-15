@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Ehgiz.Application.Common;
 using Ehgiz.Application.DTOs.Auth;
 using Ehgiz.Application.DTOs.Profile;
+using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Services;
 using MapsterMapper;
 using Microsoft.AspNetCore.Authorization;

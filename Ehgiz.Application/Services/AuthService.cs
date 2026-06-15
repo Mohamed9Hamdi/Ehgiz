@@ -1,4 +1,5 @@
 using Ehgiz.Application.DTOs.Auth;
+using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Settings;
 using Ehgiz.DAL.Data;
 using Ehgiz.DAL.Entities;

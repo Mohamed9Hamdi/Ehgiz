@@ -1,6 +1,6 @@
 using Ehgiz.DAL.Entities;
 
-namespace Ehgiz.Application.Services;
+namespace Ehgiz.Application.Interfaces;
 
 public interface ITokenService
 {

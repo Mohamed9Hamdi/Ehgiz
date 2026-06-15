@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Settings;
 using Ehgiz.DAL.Entities;
 using Microsoft.Extensions.Options;
