@@ -2,6 +2,7 @@ using Ehgiz.Application.DTOs.Auth;
 using Ehgiz.Application.Settings;
 using Ehgiz.DAL.Data;
 using Ehgiz.DAL.Entities;
+using Mapster;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -42,16 +43,7 @@ public class AuthService : IAuthService
                 ["Email is already registered."]);
         }
 
-        var user = new ApplicationUser
-        {
-            UserName = dto.Email,
-            Email = dto.Email,
-            FullName = dto.FullName,
-            PhoneNumber = dto.PhoneNumber,
-            City = dto.City,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
+        var user = dto.Adapt<ApplicationUser>();
 
         var result = await _userManager.CreateAsync(user, dto.Password);
         if (!result.Succeeded)
@@ -98,7 +90,7 @@ public class AuthService : IAuthService
         return await IssueTokensAsync(stored.User);
     }
 
-    public async Task LogoutAsync(string rawRefreshToken)
+    public async Task LogoutSessionAsync(string rawRefreshToken)
     {
         var hash = _tokenService.HashToken(rawRefreshToken);
 

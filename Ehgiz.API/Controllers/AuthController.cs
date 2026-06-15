@@ -1,6 +1,10 @@
+using System.Security.Claims;
 using Ehgiz.Application.Common;
 using Ehgiz.Application.DTOs.Auth;
+using Ehgiz.Application.DTOs.Profile;
 using Ehgiz.Application.Services;
+using MapsterMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ehgiz.API.Controllers;
@@ -13,10 +17,17 @@ public class AuthController : ControllerBase
     private const string RefreshCookiePath = "/api/auth/refresh";
 
     private readonly IAuthService _authService;
+    private readonly IProfileService _profileService;
+    private readonly IMapper _mapper;
 
-    public AuthController(IAuthService authService)
+    public AuthController(
+        IAuthService authService,
+        IProfileService profileService,
+        IMapper mapper)
     {
         _authService = authService;
+        _profileService = profileService;
+        _mapper = mapper;
     }
 
     [HttpPost("register")]
@@ -48,7 +59,7 @@ public class AuthController : ControllerBase
         SetRefreshCookie(tokens.RawRefreshToken);
 
         return Ok(ApiResponse<LoginResponseDTO>.Success(
-            new LoginResponseDTO(tokens.AccessToken, tokens.AccessTokenExpiresAt),
+            _mapper.Map<LoginResponseDTO>(tokens),
             "Login successful"));
     }
 
@@ -71,20 +82,47 @@ public class AuthController : ControllerBase
         SetRefreshCookie(tokens.RawRefreshToken);
 
         return Ok(ApiResponse<LoginResponseDTO>.Success(
-            new LoginResponseDTO(tokens.AccessToken, tokens.AccessTokenExpiresAt),
+            _mapper.Map<LoginResponseDTO>(tokens),
             "Token refreshed successfully"));
     }
 
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> GetProfile()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(ApiResponse<UserProfileDTO>.Fail("Unauthorized."));
+        }
+
+        var profile = await _profileService.GetProfileAsync(userId);
+        if (profile is null)
+        {
+            return NotFound(ApiResponse<UserProfileDTO>.Fail("User not found."));
+        }
+
+        return Ok(ApiResponse<UserProfileDTO>.Success(profile, "Profile retrieved successfully."));
+    }
+
+    [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
         if (Request.Cookies.TryGetValue(RefreshCookieName, out var rawRefreshToken) &&
             !string.IsNullOrWhiteSpace(rawRefreshToken))
         {
-            await _authService.LogoutAsync(rawRefreshToken);
+            await _authService.LogoutSessionAsync(rawRefreshToken);
         }
 
-        DeleteRefreshCookie();
+        Response.Cookies.Delete(RefreshCookieName, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Path = RefreshCookiePath
+        });
+
         return NoContent();
     }
 
@@ -101,14 +139,12 @@ public class AuthController : ControllerBase
 
     private void DeleteRefreshCookie()
     {
-        Response.Cookies.Append(RefreshCookieName, string.Empty, new CookieOptions
+        Response.Cookies.Delete(RefreshCookieName, new CookieOptions
         {
             HttpOnly = true,
             Secure = true,
             SameSite = SameSiteMode.Strict,
-            Path = RefreshCookiePath,
-            Expires = DateTimeOffset.UnixEpoch,
-            MaxAge = TimeSpan.Zero
+            Path = RefreshCookiePath
         });
     }
 }

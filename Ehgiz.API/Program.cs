@@ -1,5 +1,6 @@
 using System.Text;
 using Ehgiz.Application;
+using Ehgiz.Application.Common;
 using Ehgiz.Application.Seed;
 using Ehgiz.Application.Settings;
 using Ehgiz.DAL;
@@ -10,7 +11,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using Ehgiz.Application;
 
 
 
@@ -68,6 +68,22 @@ builder.Services.AddAuthentication(options =>
             }
 
             return Task.CompletedTask;
+        },
+        OnChallenge = async context =>
+        {
+            context.HandleResponse();
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(
+                ApiResponse<object>.Fail("Unauthorized."));
+        },
+        OnAuthenticationFailed = async context =>
+        {
+            context.NoResult();
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(
+                ApiResponse<object>.Fail("Invalid or expired access token."));
         }
     };
 });
