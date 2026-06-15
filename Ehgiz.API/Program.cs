@@ -15,6 +15,10 @@ using Microsoft.OpenApi;
 
 DotNetEnv.Env.Load();
 
+
+
+DotNetEnv.Env.Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<EhgizDbContext>(options =>
