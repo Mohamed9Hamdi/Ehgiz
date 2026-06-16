@@ -51,16 +51,17 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequestDTO dto)
     {
-        var tokens = await _authService.LoginAsync(dto);
-        if (tokens is null)
+        var result = await _authService.LoginAsync(dto);
+        if (result.Tokens is null)
         {
-            return Unauthorized(ApiResponse<LoginResponseDTO>.Fail("Invalid email or password."));
+            return Unauthorized(ApiResponse<LoginResponseDTO>.Fail(
+                result.FailureMessage ?? "Invalid email or password."));
         }
 
-        SetRefreshCookie(tokens.RawRefreshToken);
+        SetRefreshCookie(result.Tokens.RawRefreshToken);
 
         return Ok(ApiResponse<LoginResponseDTO>.Success(
-            _mapper.Map<LoginResponseDTO>(tokens),
+            _mapper.Map<LoginResponseDTO>(result.Tokens),
             "Login successful"));
     }
 
@@ -85,6 +86,34 @@ public class AuthController : ControllerBase
         return Ok(ApiResponse<LoginResponseDTO>.Success(
             _mapper.Map<LoginResponseDTO>(tokens),
             "Token refreshed successfully"));
+    }
+
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequestDTO dto)
+    {
+        var result = await _authService.VerifyEmailAsync(dto);
+
+        if (!result.Succeeded)
+        {
+            return BadRequest(ApiResponse<object>.Fail(
+                result.Message,
+                result.Errors.ToList()));
+        }
+
+        return Ok(ApiResponse<object>.Success(null!, result.Message));
+    }
+
+    [HttpPost("resend-verification")]
+    public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequestDTO dto)
+    {
+        var result = await _authService.ResendVerificationAsync(dto);
+
+        if (!result.Succeeded)
+        {
+            return BadRequest(ApiResponse<object>.Fail(result.Message));
+        }
+
+        return Ok(ApiResponse<object>.Success(null!, result.Message));
     }
 
     [Authorize]

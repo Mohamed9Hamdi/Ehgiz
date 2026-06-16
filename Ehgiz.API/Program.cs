@@ -30,6 +30,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<int>>(options =>
     options.Password.RequireUppercase = false;
     options.Password.RequireLowercase = true;
     options.User.RequireUniqueEmail = true;
+    options.SignIn.RequireConfirmedEmail = true;
     options.Lockout.MaxFailedAccessAttempts = 5;
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
 })

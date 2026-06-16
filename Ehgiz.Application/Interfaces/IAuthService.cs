@@ -5,7 +5,9 @@ namespace Ehgiz.Application.Interfaces;
 public interface IAuthService
 {
     Task<RegisterResultDTO> RegisterAsync(RegisterRequestDTO dto);
-    Task<AuthTokensDTO?> LoginAsync(LoginRequestDTO dto);
+    Task<AuthLoginResultDTO> LoginAsync(LoginRequestDTO dto);
     Task<AuthTokensDTO?> RefreshSessionAsync(string rawRefreshToken);
     Task LogoutSessionAsync(string rawRefreshToken);
+    Task<VerifyEmailResultDTO> VerifyEmailAsync(VerifyEmailRequestDTO dto);
+    Task<ResendVerificationResultDTO> ResendVerificationAsync(ResendVerificationRequestDTO dto);
 }
