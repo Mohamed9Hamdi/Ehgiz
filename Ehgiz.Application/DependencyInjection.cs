@@ -28,9 +28,11 @@ public static class DependencyInjection
         services.AddScoped<IMapper, ServiceMapper>();
 
         services.AddScoped<DatabaseSeeder>();
+        services.AddScoped<IToolService,ToolService>();
+        services.AddScoped<IReviewService, ReviewService>();
         // Register Services
-       
-        
+
+
         return services;
     }
 }

@@ -68,6 +68,11 @@ artifacts/
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 
+
+# uploads
+uploads/
+uploads/tools/
+
 # StyleCop
 StyleCopReport.xml
 

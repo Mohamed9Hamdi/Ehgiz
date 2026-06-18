@@ -96,7 +96,7 @@ builder.Services.AddCors(o => o.AddPolicy("Angular", p =>
      .AllowAnyHeader()
      .AllowAnyMethod()
      .AllowCredentials()));
-
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddDalServices();
 builder.Services.AddApplicationServices(builder.Configuration);
 
@@ -143,7 +143,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseMiddleware<ExceptionHandlingMiddleware>(); 
 app.UseHttpsRedirection();
-
+app.UseStaticFiles();
 app.UseCors("Angular");
 
 app.UseAuthentication();
