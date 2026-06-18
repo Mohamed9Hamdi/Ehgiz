@@ -9,7 +9,7 @@ namespace Ehgiz.API.Controllers;
 
 [ApiController]
 [Route("api/wallet")]
-// [Authorize]
+[Authorize]
 public class WalletController : ControllerBase
 {
     private readonly IWalletService _walletService;
@@ -20,8 +20,8 @@ public class WalletController : ControllerBase
     }
 
     private int CurrentUserId =>
-        // int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        4;
+        int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
 
     // GET api/wallet
     [HttpGet]
