@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Ehgiz.Application.Common;
 using Ehgiz.Application.DTOs.Auth;
 using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Settings;
@@ -62,6 +63,8 @@ public class AuthService : IAuthService
                 null,
                 result.Errors.Select(e => e.Description));
         }
+
+        await _userManager.AddToRoleAsync(user, AppRoles.User);
 
         await CreateAndSendVerificationCodeAsync(user);
 
@@ -215,7 +218,8 @@ public class AuthService : IAuthService
 
     private async Task<AuthTokensDTO> IssueTokensAsync(ApplicationUser user)
     {
-        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user);
+        var roles = await _userManager.GetRolesAsync(user);
+        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, roles);
         var rawRefreshToken = _tokenService.GenerateRefreshToken();
 
         _context.RefreshTokens.Add(new RefreshToken

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using Ehgiz.Application;
 using Ehgiz.Application.Common;
@@ -55,6 +56,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings.Issuer,
         ValidAudience = jwtSettings.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
+        RoleClaimType = ClaimTypes.Role,
         ClockSkew = TimeSpan.Zero
     };
 

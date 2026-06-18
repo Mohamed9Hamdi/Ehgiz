@@ -19,7 +19,7 @@ public class TokenService : ITokenService
         _jwtSettings = jwtSettings.Value;
     }
 
-    public (string Token, DateTime ExpiresAt) GenerateAccessToken(ApplicationUser user)
+    public (string Token, DateTime ExpiresAt) GenerateAccessToken(ApplicationUser user, IEnumerable<string> roles)
     {
         var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenMins);
 
@@ -30,6 +30,8 @@ public class TokenService : ITokenService
             new(ClaimTypes.Name, user.FullName),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+
+        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
