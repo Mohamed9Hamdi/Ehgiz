@@ -1,3 +1,7 @@
+using Ehgiz.Application.Common;
+
+namespace Ehgiz.API.Middleware;
+
 public class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
@@ -19,18 +23,16 @@ public class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, ex.Message);
+            _logger.LogError(ex, "Unhandled exception");
+
+            if (context.Response.HasStarted)
+                return;
 
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
-            var response = new
-            {
-                Message = ex.Message,
-                StatusCode = context.Response.StatusCode
-            };
-
-            await context.Response.WriteAsJsonAsync(response);
+            await context.Response.WriteAsJsonAsync(
+                ApiResponse<object>.Fail("An unexpected error occurred."));
         }
     }
 }

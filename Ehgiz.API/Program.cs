@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text;
+using Ehgiz.API.Middleware;
 using Ehgiz.Application;
 using Ehgiz.Application.Common;
 using Ehgiz.Application.Seed;
@@ -75,19 +76,20 @@ builder.Services.AddAuthentication(options =>
         OnChallenge = async context =>
         {
             context.HandleResponse();
+
+            if (context.Response.HasStarted)
+                return;
+
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(
-                ApiResponse<object>.Fail("Unauthorized."));
+
+            var message = context.AuthenticateFailure is not null
+                ? "Invalid or expired access token."
+                : "Unauthorized.";
+
+            await context.Response.WriteAsJsonAsync(ApiResponse<object>.Fail(message));
         },
-        OnAuthenticationFailed = async context =>
-        {
-            context.NoResult();
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(
-                ApiResponse<object>.Fail("Invalid or expired access token."));
-        }
+        OnAuthenticationFailed = _ => Task.CompletedTask
     };
 });
 
