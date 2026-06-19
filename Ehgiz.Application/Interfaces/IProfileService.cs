@@ -1,6 +1,6 @@
 using Ehgiz.Application.DTOs.Profile;
 
-namespace Ehgiz.Application.Services;
+namespace Ehgiz.Application.Interfaces;
 
 public interface IProfileService
 {

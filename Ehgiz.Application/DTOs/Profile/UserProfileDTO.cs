@@ -9,4 +9,5 @@ public record UserProfileDTO(
     string? Address,
     string? City,
     DateTime CreatedAt,
-    bool IsActive);
+    bool IsActive,
+    IReadOnlyList<string> Roles);

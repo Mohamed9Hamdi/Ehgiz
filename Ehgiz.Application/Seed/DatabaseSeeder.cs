@@ -1,3 +1,4 @@
+using Ehgiz.Application.Common;
 using Ehgiz.DAL.Data;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
@@ -11,6 +12,7 @@ public class DatabaseSeeder
 {
     private readonly EhgizDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<IdentityRole<int>> _roleManager;
     private readonly IConfiguration _configuration;
 
     private static readonly DateTime SeedDate = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -18,15 +20,20 @@ public class DatabaseSeeder
     public DatabaseSeeder(
         EhgizDbContext context,
         UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole<int>> roleManager,
         IConfiguration configuration)
     {
         _context = context;
         _userManager = userManager;
+        _roleManager = roleManager;
         _configuration = configuration;
     }
 
     public async Task SeedAsync()
     {
+        await SeedRolesAsync();
+        await EnsureSeedUserRolesAsync();
+
         if (await _context.Users.AnyAsync())
             return;
 
@@ -40,7 +47,8 @@ public class DatabaseSeeder
             "+201001234567",
             "https://cdn.ehgiz.com/users/ahmad.jpg",
             "12 Nile Street",
-            "Cairo");
+            "Cairo",
+            AppRoles.Admin);
 
         var sara = await CreateUserAsync(
             "sara.mohamed@ehgiz.com",
@@ -49,7 +57,8 @@ public class DatabaseSeeder
             "+201076543210",
             "https://cdn.ehgiz.com/users/sara.jpg",
             "45 Garden City",
-            "Giza");
+            "Giza",
+            AppRoles.User);
 
         var omar = await CreateUserAsync(
             "omar.ali@ehgiz.com",
@@ -58,7 +67,8 @@ public class DatabaseSeeder
             "+201112223344",
             "https://cdn.ehgiz.com/users/omar.jpg",
             "8 Alexandria Road",
-            "Alexandria");
+            "Alexandria",
+            AppRoles.User);
 
         var drill = new Tool
         {
@@ -258,6 +268,32 @@ public class DatabaseSeeder
         await _context.SaveChangesAsync();
     }
 
+    private async Task SeedRolesAsync()
+    {
+        foreach (var role in AppRoles.All)
+        {
+            if (!await _roleManager.RoleExistsAsync(role))
+                await _roleManager.CreateAsync(new IdentityRole<int>(role));
+        }
+    }
+
+    private async Task EnsureSeedUserRolesAsync()
+    {
+        await EnsureUserRoleAsync("ahmad.hassan@ehgiz.com", AppRoles.Admin);
+        await EnsureUserRoleAsync("sara.mohamed@ehgiz.com", AppRoles.User);
+        await EnsureUserRoleAsync("omar.ali@ehgiz.com", AppRoles.User);
+    }
+
+    private async Task EnsureUserRoleAsync(string email, string role)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user is null)
+            return;
+
+        if (!await _userManager.IsInRoleAsync(user, role))
+            await _userManager.AddToRoleAsync(user, role);
+    }
+
     private async Task<ApplicationUser> CreateUserAsync(
         string email,
         string password,
@@ -265,7 +301,8 @@ public class DatabaseSeeder
         string phoneNumber,
         string profileImageUrl,
         string address,
-        string city)
+        string city,
+        string role)
     {
         var user = new ApplicationUser
         {
@@ -287,6 +324,8 @@ public class DatabaseSeeder
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
             throw new InvalidOperationException($"Failed to seed user '{email}': {errors}");
         }
+
+        await _userManager.AddToRoleAsync(user, role);
 
         return user;
     }

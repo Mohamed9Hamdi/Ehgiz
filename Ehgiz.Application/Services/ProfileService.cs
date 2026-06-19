@@ -1,4 +1,5 @@
 using Ehgiz.Application.DTOs.Profile;
+using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Entities;
 using MapsterMapper;
 using Microsoft.AspNetCore.Identity;
@@ -22,6 +23,8 @@ public class ProfileService : IProfileService
         if (user is null || !user.IsActive)
             return null;
 
-        return _mapper.Map<UserProfileDTO>(user);
+        var roles = await _userManager.GetRolesAsync(user);
+        var profile = _mapper.Map<UserProfileDTO>(user);
+        return profile with { Roles = roles.ToList() };
     }
 }
