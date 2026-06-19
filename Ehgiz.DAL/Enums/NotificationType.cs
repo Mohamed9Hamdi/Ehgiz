@@ -7,5 +7,9 @@ public enum NotificationType
     NewMessage = 3,
     NewReview = 4,
     IssueReportUpdate = 5,
-    System = 6
+    System = 6,
+    HandoverPending = 7,
+    HandoverAccepted = 8,
+    HandoverDisputed = 9,
+    DisputeResolved = 10
 }

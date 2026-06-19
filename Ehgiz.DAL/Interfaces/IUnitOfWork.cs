@@ -18,6 +18,8 @@ public interface IUnitOfWork : IAsyncDisposable
     IIssueReportRepository IssueReports { get; }
     IWalletRepository Wallets { get; }
     IRepository<Ehgiz.DAL.Entities.WalletTransaction> WalletTransactions { get; }
+    IHandoverRepository Handovers { get; }
+    IRepository<Ehgiz.DAL.Entities.HandoverImage> HandoverImages { get; }
 
     Task<int> SaveChangesAsync();
     Task<IDbContextTransaction> BeginTransactionAsync();

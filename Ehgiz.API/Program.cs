@@ -17,7 +17,6 @@ DotNetEnv.Env.Load();
 
 
 
-DotNetEnv.Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -132,6 +131,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>(); 
+app.UseStaticFiles();
 app.UseHttpsRedirection();
 
 app.UseCors("Angular");

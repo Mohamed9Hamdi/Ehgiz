@@ -25,6 +25,8 @@ public class EhgizDbContext : IdentityDbContext<ApplicationUser, IdentityRole<in
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Wallet> Wallets => Set<Wallet>();
     public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
+    public DbSet<Handover> Handovers => Set<Handover>();
+    public DbSet<HandoverImage> HandoverImages => Set<HandoverImage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

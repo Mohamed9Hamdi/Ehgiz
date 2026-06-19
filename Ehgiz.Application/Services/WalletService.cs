@@ -25,7 +25,7 @@ public class WalletService : IWalletService
 
     public async Task<WalletDto> GetWalletAsync(int userId)
     {
-        var wallet = await GetOrCreateWalletAsync(userId);
+        var wallet = await _uow.Wallets.GetOrCreateByUserIdAsync(userId);
         return new WalletDto(
             Id: wallet.Id,
             Balance: wallet.Balance,
@@ -65,7 +65,7 @@ public class WalletService : IWalletService
 
     public async Task CreditWalletFromStripeAsync(string sessionId, int userId, decimal amount)
     {
-        var wallet = await GetOrCreateWalletAsync(userId);
+        var wallet = await _uow.Wallets.GetOrCreateByUserIdAsync(userId);
 
         wallet.Balance += amount;
         wallet.UpdatedAt = DateTime.UtcNow;
@@ -128,7 +128,7 @@ public class WalletService : IWalletService
             throw new InvalidOperationException(
                 "You must complete Stripe Connect onboarding before withdrawing.");
 
-        var wallet = await GetOrCreateWalletAsync(userId);
+        var wallet = await _uow.Wallets.GetOrCreateByUserIdAsync(userId);
 
         if (wallet.Balance < request.Amount)
             throw new InvalidOperationException(
@@ -157,22 +157,4 @@ public class WalletService : IWalletService
         await _uow.SaveChangesAsync();
     }
 
-    // ── Private Helpers ──────────────────────────────────────────────────────
-    private async Task<Wallet> GetOrCreateWalletAsync(int userId)
-    {
-        var wallet = await _uow.Wallets.GetByUserIdAsync(userId);
-        if (wallet is not null) return wallet;
-
-        wallet = new Wallet
-        {
-            UserId = userId,
-            Balance = 0,
-            HeldBalance = 0,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        await _uow.Wallets.AddAsync(wallet);
-        await _uow.SaveChangesAsync();
-        return wallet;
-    }
 }

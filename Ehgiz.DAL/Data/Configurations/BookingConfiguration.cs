@@ -19,6 +19,9 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .HasConversion<string>()
             .HasMaxLength(50);
 
+        builder.Property(b => b.AdminResolutionNotes)
+            .HasMaxLength(2000);
+
         builder.Property(b => b.CreatedAt)
             .IsRequired();
 

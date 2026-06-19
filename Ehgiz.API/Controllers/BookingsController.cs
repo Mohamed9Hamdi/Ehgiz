@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Ehgiz.Application.Common;
 using Ehgiz.Application.DTOs.Bookings;
+using Ehgiz.Application.DTOs.Handovers;
 using Ehgiz.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,7 +37,7 @@ public class BookingsController : ControllerBase
     public async Task<IActionResult> GetMyBookings()
     {
         var result = await _bookingService.GetMyBookingsAsync(CurrentUserId);
-        return Ok(ApiResponse<IEnumerable<BookingDto>>.Success(result));
+        return Ok(ApiResponse<IEnumerable<BookingCardDto>>.Success(result));
     }
 
     // GET api/bookings/received
@@ -44,7 +45,7 @@ public class BookingsController : ControllerBase
     public async Task<IActionResult> GetReceivedBookings()
     {
         var result = await _bookingService.GetReceivedBookingsAsync(CurrentUserId);
-        return Ok(ApiResponse<IEnumerable<BookingDto>>.Success(result));
+        return Ok(ApiResponse<IEnumerable<BookingCardDto>>.Success(result));
     }
 
     // GET api/bookings/{id}
@@ -63,11 +64,63 @@ public class BookingsController : ControllerBase
         return Ok(ApiResponse<object>.Success(null!, "Booking cancelled and refund issued to wallet."));
     }
 
-    // PUT api/bookings/{id}/complete
-    [HttpPut("{id:int}/complete")]
-    public async Task<IActionResult> CompleteBooking(int id)
+    // ── Owner Accept/Reject ─────────────────────────────────────────────────
+
+    // PUT api/bookings/{id}/accept
+    [HttpPut("{id:int}/accept")]
+    public async Task<IActionResult> AcceptBooking(int id)
     {
-        await _bookingService.CompleteBookingAsync(id, CurrentUserId);
-        return Ok(ApiResponse<object>.Success(null!, "Booking completed. Earnings credited to owner wallet."));
+        await _bookingService.AcceptBookingAsync(id, CurrentUserId);
+        return Ok(ApiResponse<object>.Success(null!, "Booking accepted."));
+    }
+
+    // PUT api/bookings/{id}/reject
+    [HttpPut("{id:int}/reject")]
+    public async Task<IActionResult> RejectBooking(int id)
+    {
+        await _bookingService.RejectBookingAsync(id, CurrentUserId);
+        return Ok(ApiResponse<object>.Success(null!, "Booking rejected. Refund issued to renter."));
+    }
+
+    // ── Delivery Handover ───────────────────────────────────────────────────
+
+    // POST api/bookings/{id}/handover/delivery
+    [HttpPost("{id:int}/handover/delivery")]
+    public async Task<IActionResult> SubmitDeliveryHandover(int id, [FromForm] SubmitHandoverRequest dto)
+    {
+        await _bookingService.SubmitDeliveryHandoverAsync(id, CurrentUserId, dto);
+        return Ok(ApiResponse<object>.Success(null!, "Delivery handover submitted. Waiting for renter confirmation."));
+    }
+
+    // PUT api/bookings/{id}/handover/delivery/respond
+    [HttpPut("{id:int}/handover/delivery/respond")]
+    public async Task<IActionResult> RespondDeliveryHandover(int id, [FromBody] RespondHandoverRequest dto)
+    {
+        await _bookingService.RespondDeliveryHandoverAsync(id, CurrentUserId, dto);
+        var message = dto.Accept
+            ? "Delivery accepted. Rental is now active."
+            : "Delivery issue reported. Booking is now disputed.";
+        return Ok(ApiResponse<object>.Success(null!, message));
+    }
+
+    // ── Return Handover ─────────────────────────────────────────────────────
+
+    // POST api/bookings/{id}/handover/return
+    [HttpPost("{id:int}/handover/return")]
+    public async Task<IActionResult> SubmitReturnHandover(int id, [FromForm] SubmitHandoverRequest dto)
+    {
+        await _bookingService.SubmitReturnHandoverAsync(id, CurrentUserId, dto);
+        return Ok(ApiResponse<object>.Success(null!, "Return handover submitted. Waiting for owner confirmation."));
+    }
+
+    // PUT api/bookings/{id}/handover/return/respond
+    [HttpPut("{id:int}/handover/return/respond")]
+    public async Task<IActionResult> RespondReturnHandover(int id, [FromBody] RespondHandoverRequest dto)
+    {
+        await _bookingService.RespondReturnHandoverAsync(id, CurrentUserId, dto);
+        var message = dto.Accept
+            ? "Return accepted. Booking completed. Earnings credited."
+            : "Return issue reported. Booking is now disputed.";
+        return Ok(ApiResponse<object>.Success(null!, message));
     }
 }

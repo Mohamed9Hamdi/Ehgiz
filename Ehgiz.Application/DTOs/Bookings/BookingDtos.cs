@@ -1,3 +1,5 @@
+using Ehgiz.Application.DTOs.Handovers;
+
 namespace Ehgiz.Application.DTOs.Bookings;
 
 public record CreateBookingRequest(
@@ -17,8 +19,13 @@ public record BookingDto(
     int Id,
     int ToolId,
     string ToolName,
+    string? ToolImageUrl,
+    int OwnerId,
     string OwnerName,
+    string? OwnerProfileImageUrl,
+    int RenterId,
     string RenterName,
+    string? RenterProfileImageUrl,
     DateTime StartDate,
     DateTime EndDate,
     int Days,
@@ -28,4 +35,8 @@ public record BookingDto(
     string Status,
     string? PaymentStatus,
     string? EscrowStatus,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? AdminResolutionNotes,
+    IEnumerable<HandoverDto>? Handovers,
+    IReadOnlyList<string> AllowedActions,
+    bool HasReview);

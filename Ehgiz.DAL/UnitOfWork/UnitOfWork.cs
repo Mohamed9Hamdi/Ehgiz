@@ -24,10 +24,12 @@ public class UnitOfWork : IUnitOfWork
         IMessageRepository messages,
         INotificationRepository notifications,
         IIssueReportRepository issueReports,
-        IWalletRepository wallets)
+        IWalletRepository wallets,
+        IHandoverRepository handovers)
     {
         _context = context;
         WalletTransactions = new Repository<WalletTransaction>(context);
+        HandoverImages = new Repository<HandoverImage>(context);
         Users = users;
         Categories = categories;
         Tools = tools;
@@ -40,6 +42,7 @@ public class UnitOfWork : IUnitOfWork
         Notifications = notifications;
         IssueReports = issueReports;
         Wallets = wallets;
+        Handovers = handovers;
     }
 
     public IUserRepository Users { get; }
@@ -67,6 +70,10 @@ public class UnitOfWork : IUnitOfWork
     public IWalletRepository Wallets { get; }
 
     public IRepository<WalletTransaction> WalletTransactions { get; }
+
+    public IHandoverRepository Handovers { get; }
+
+    public IRepository<HandoverImage> HandoverImages { get; }
 
     public Task<int> SaveChangesAsync() =>
         _context.SaveChangesAsync();

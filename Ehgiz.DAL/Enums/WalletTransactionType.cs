@@ -7,5 +7,9 @@ public enum WalletTransactionType
     EarningCredit   = 3,
     InsuranceRefund = 4,
     BookingRefund   = 5,
-    Withdrawal      = 6
+    Withdrawal      = 6,
+    LateFeeDebit    = 7,
+    LateFeeCredit   = 8,
+    PartialRefund   = 9,
+    DisputeCredit   = 10
 }
