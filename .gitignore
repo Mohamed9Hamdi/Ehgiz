@@ -220,7 +220,8 @@ rcf/
 # .gitignore
 .env
 *.env
-
+wwwroot/
+uploads/
 # Windows Store app package directories and files
 AppPackages/
 BundleArtifacts/
