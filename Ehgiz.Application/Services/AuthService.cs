@@ -1,10 +1,12 @@
 using System.Security.Cryptography;
 using Ehgiz.Application.Common;
 using Ehgiz.Application.DTOs.Auth;
+using Ehgiz.Application.DTOs.Notifications;
 using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Settings;
 using Ehgiz.DAL.Data;
 using Ehgiz.DAL.Entities;
+using Ehgiz.DAL.Enums;
 using Mapster;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +21,7 @@ public class AuthService : IAuthService
     private readonly EhgizDbContext _context;
     private readonly ITokenService _tokenService;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly JwtSettings _jwtSettings;
     private readonly SendGridSettings _sendGridSettings;
 
@@ -28,6 +31,7 @@ public class AuthService : IAuthService
         EhgizDbContext context,
         ITokenService tokenService,
         IEmailService emailService,
+        INotificationService notificationService,
         IOptions<JwtSettings> jwtSettings,
         IOptions<SendGridSettings> sendGridSettings)
     {
@@ -36,6 +40,7 @@ public class AuthService : IAuthService
         _context = context;
         _tokenService = tokenService;
         _emailService = emailService;
+        _notificationService = notificationService;
         _jwtSettings = jwtSettings.Value;
         _sendGridSettings = sendGridSettings.Value;
     }
@@ -83,7 +88,17 @@ public class AuthService : IAuthService
 
         var signInResult = await _signInManager.CheckPasswordSignInAsync(user, dto.Password, lockoutOnFailure: true);
         if (signInResult.Succeeded)
+        {
+            await _notificationService.CreateAsync(new CreateNotificationDto
+            {
+                UserId = user.Id,
+                Title = "New Login",
+                Message = "You have successfully logged in.",
+                Type = NotificationType.System
+            });
+
             return new AuthLoginResultDTO(await IssueTokensAsync(user), null);
+        }
 
         if (signInResult.IsNotAllowed)
             return new AuthLoginResultDTO(null, "Please verify your email before logging in.");

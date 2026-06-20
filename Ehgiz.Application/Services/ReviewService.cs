@@ -1,9 +1,12 @@
 using Ehgiz.Application.DTOs.Review;
+using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Data;
 using Ehgiz.DAL.Entities;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+
+namespace Ehgiz.Application.Services;
 
 public class ReviewService : IReviewService
 {
