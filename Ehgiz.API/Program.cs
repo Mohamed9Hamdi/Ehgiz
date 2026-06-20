@@ -1,8 +1,11 @@
 using System.Text;
 using Ehgiz.Application;
 using Ehgiz.Application.Common;
+using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Seed;
 using Ehgiz.Application.Settings;
+using Ehgiz.API.Hubs;
+using Ehgiz.API.Infrastructure;
 using Ehgiz.DAL;
 using Ehgiz.DAL.Data;
 using Ehgiz.DAL.Entities;
@@ -96,6 +99,8 @@ builder.Services.AddCors(o => o.AddPolicy("Angular", p =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddDalServices();
 builder.Services.AddApplicationServices(builder.Configuration);
+builder.Services.AddSignalR();
+builder.Services.AddScoped<INotificationBroadcaster, NotificationBroadcaster>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -140,12 +145,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseMiddleware<ExceptionHandlingMiddleware>(); 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+
 app.UseCors("Angular");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();

@@ -21,7 +21,8 @@ public class UnitOfWork : IUnitOfWork
         IConversationRepository conversations,
         IMessageRepository messages,
         INotificationRepository notifications,
-        IIssueReportRepository issueReports)
+        IIssueReportRepository issueReports,
+        IUserConnectionRepository userConnections)
     {
         _context = context;
         Users = users;
@@ -35,6 +36,7 @@ public class UnitOfWork : IUnitOfWork
         Messages = messages;
         Notifications = notifications;
         IssueReports = issueReports;
+        UserConnections = userConnections;
     }
 
     public IUserRepository Users { get; }
@@ -58,6 +60,8 @@ public class UnitOfWork : IUnitOfWork
     public INotificationRepository Notifications { get; }
 
     public IIssueReportRepository IssueReports { get; }
+
+    public IUserConnectionRepository UserConnections { get; }
 
     public Task<int> SaveChangesAsync() =>
         _context.SaveChangesAsync();

@@ -1,6 +1,6 @@
 using Ehgiz.Application.DTOs;
 using Ehgiz.Application.DTOs.Tools;
-using Ehgiz.BLL.Common;
+using Ehgiz.Application.Common;
 using Ehgiz.DAL.Data;
 using Ehgiz.DAL.Entities;
 using Mapster;

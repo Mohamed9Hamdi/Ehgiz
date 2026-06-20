@@ -1,3 +1,5 @@
+using Ehgiz.DAL.Enums;
+
 namespace Ehgiz.DAL.Entities;
 
 public class Tool
@@ -9,7 +11,7 @@ public class Tool
     public string? Description { get; set; }
     public decimal PricePerDay { get; set; }
     public decimal InsurancePrice { get; set; }
-    public string? Condition { get; set; }
+    public ToolCondition? Condition { get; set; }
     public string? Location { get; set; }
     public bool IsAvailable { get; set; }
     public DateTime CreatedAt { get; set; }

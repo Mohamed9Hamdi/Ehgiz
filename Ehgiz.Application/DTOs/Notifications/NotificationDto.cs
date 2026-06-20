@@ -1,17 +1,13 @@
-using Ehgiz.DAL.Enums;
+namespace Ehgiz.Application.DTOs.Notifications;
 
-namespace Ehgiz.DAL.Entities;
-
-public class Notification
+public class NotificationDto
 {
     public int Id { get; set; }
     public int UserId { get; set; }
     public string Title { get; set; } = null!;
     public string Message { get; set; } = null!;
-    public NotificationType Type { get; set; }
+    public string Type { get; set; } = null!;
     public bool IsRead { get; set; }
     public string? Url { get; set; }
     public DateTime CreatedAt { get; set; }
-
-    public ApplicationUser User { get; set; } = null!;
 }

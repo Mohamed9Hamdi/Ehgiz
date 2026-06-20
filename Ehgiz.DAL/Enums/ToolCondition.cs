@@ -1,5 +1,7 @@
+namespace Ehgiz.DAL.Enums;
+
 public enum ToolCondition
 {
-    New,
-    Used,
+    New = 1,
+    Used = 2
 }

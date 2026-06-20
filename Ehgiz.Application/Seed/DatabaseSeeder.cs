@@ -68,7 +68,7 @@ public class DatabaseSeeder
             Description = "18V cordless drill with two batteries and charger.",
             PricePerDay = 75m,
             InsurancePrice = 150m,
-            Condition = "Good",
+            Condition = ToolCondition.Used,
             Location = "Cairo, Maadi",
             IsAvailable = true,
             CreatedAt = SeedDate,
@@ -83,7 +83,7 @@ public class DatabaseSeeder
             Description = "1600W electric lawn mower suitable for medium gardens.",
             PricePerDay = 90m,
             InsurancePrice = 200m,
-            Condition = "Excellent",
+            Condition = ToolCondition.New,
             Location = "Cairo, Maadi",
             IsAvailable = true,
             CreatedAt = SeedDate,
@@ -98,7 +98,7 @@ public class DatabaseSeeder
             Description = "6-meter extension ladder with safety locks.",
             PricePerDay = 50m,
             InsurancePrice = 100m,
-            Condition = "Good",
+            Condition = ToolCondition.Used,
             Location = "Alexandria, Smouha",
             IsAvailable = false,
             CreatedAt = SeedDate,
@@ -113,7 +113,7 @@ public class DatabaseSeeder
             Description = "2000 PSI pressure washer for outdoor cleaning.",
             PricePerDay = 65m,
             InsurancePrice = 120m,
-            Condition = "Good",
+            Condition = ToolCondition.Used,
             Location = "Alexandria, Smouha",
             IsAvailable = true,
             CreatedAt = SeedDate,
@@ -223,24 +223,27 @@ public class DatabaseSeeder
             new Notification
             {
                 UserId = sara.Id,
-                Type = NotificationType.BookingUpdate,
-                Content = "Your booking for Bosch Professional Drill has been completed.",
+                Type = NotificationType.Booking,
+                Title = "Booking Completed",
+                Message = "Your booking for Bosch Professional Drill has been completed.",
                 IsRead = true,
                 CreatedAt = new DateTime(2026, 2, 4, 8, 0, 0, DateTimeKind.Utc)
             },
             new Notification
             {
                 UserId = sara.Id,
-                Type = NotificationType.PaymentUpdate,
-                Content = "Payment of 150 EGP is held in escrow for your ladder booking.",
+                Type = NotificationType.Payment,
+                Title = "Payment in Escrow",
+                Message = "Payment of 150 EGP is held in escrow for your ladder booking.",
                 IsRead = false,
                 CreatedAt = new DateTime(2026, 3, 9, 14, 35, 0, DateTimeKind.Utc)
             },
             new Notification
             {
                 UserId = ahmad.Id,
-                Type = NotificationType.NewMessage,
-                Content = "You have a new message from Sara Mohamed.",
+                Type = NotificationType.Message,
+                Title = "New Message",
+                Message = "You have a new message from Sara Mohamed.",
                 IsRead = false,
                 CreatedAt = new DateTime(2026, 3, 8, 11, 0, 0, DateTimeKind.Utc)
             });

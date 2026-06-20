@@ -1,13 +1,13 @@
 
-using Mapster;
-using MapsterMapper;
-using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
+using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Seed;
 using Ehgiz.Application.Services;
 using Ehgiz.Application.Settings;
+using Mapster;
+using MapsterMapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 
 public static class DependencyInjection
@@ -27,9 +27,9 @@ public static class DependencyInjection
         services.AddScoped<IMapper, ServiceMapper>();
 
         services.AddScoped<DatabaseSeeder>();
-        services.AddScoped<IToolService,ToolService>();
+        services.AddScoped<IToolService, ToolService>();
         services.AddScoped<IReviewService, ReviewService>();
-        // Register Services
+        services.AddScoped<INotificationService, NotificationService>();
 
 
         return services;
