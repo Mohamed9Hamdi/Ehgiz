@@ -7,6 +7,7 @@ using System.Reflection;
 using Ehgiz.Application.Seed;
 using Ehgiz.Application.Services;
 using Ehgiz.Application.Settings;
+using Ehgiz.Application.Interfaces;
 
 
 public static class DependencyInjection

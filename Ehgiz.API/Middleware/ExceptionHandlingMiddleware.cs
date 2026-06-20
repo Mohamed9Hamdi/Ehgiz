@@ -1,3 +1,5 @@
+namespace Ehgiz.API.Middleware;
+
 public class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
