@@ -1,5 +1,6 @@
 using Ehgiz.Application.DTOs.Tools;
 using Ehgiz.Application.Common;
+using Ehgiz.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;

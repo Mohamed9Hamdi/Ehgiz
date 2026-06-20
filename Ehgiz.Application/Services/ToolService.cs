@@ -1,6 +1,6 @@
-using Ehgiz.Application.DTOs;
 using Ehgiz.Application.DTOs.Tools;
 using Ehgiz.Application.Common;
+using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Data;
 using Ehgiz.DAL.Entities;
 using Mapster;
@@ -186,16 +186,17 @@ public class ToolService : IToolService
         if (image.Tool.OwnerId != ownerId)
             throw new UnauthorizedAccessException("Not your image");
 
-        var relativePath = image.ImageUrl.Split("/uploads/")[1];
+        var parts = image.ImageUrl.Split("/uploads/");
+        if (parts.Length == 2)
+        {
+            var filePath = Path.Combine(
+                _env.ContentRootPath,
+                "uploads",
+                parts[1].Replace("/", Path.DirectorySeparatorChar.ToString()));
 
-        var filePath = Path.Combine(
-            _env.ContentRootPath,
-            "uploads",
-            relativePath.Replace("/", Path.DirectorySeparatorChar.ToString())
-        );
-
-        if (File.Exists(filePath))
-            File.Delete(filePath);
+            if (File.Exists(filePath))
+                File.Delete(filePath);
+        }
 
         _context.ToolImages.Remove(image);
         await _context.SaveChangesAsync();

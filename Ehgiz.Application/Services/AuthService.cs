@@ -89,15 +89,21 @@ public class AuthService : IAuthService
         var signInResult = await _signInManager.CheckPasswordSignInAsync(user, dto.Password, lockoutOnFailure: true);
         if (signInResult.Succeeded)
         {
-            await _notificationService.CreateAsync(new CreateNotificationDto
-            {
-                UserId = user.Id,
-                Title = "New Login",
-                Message = "You have successfully logged in.",
-                Type = NotificationType.System
-            });
+            var tokens = await IssueTokensAsync(user);
 
-            return new AuthLoginResultDTO(await IssueTokensAsync(user), null);
+            try
+            {
+                await _notificationService.CreateAsync(new CreateNotificationDto
+                {
+                    UserId = user.Id,
+                    Title = "New Login",
+                    Message = "You have successfully logged in.",
+                    Type = NotificationType.System
+                });
+            }
+            catch { }
+
+            return new AuthLoginResultDTO(tokens, null);
         }
 
         if (signInResult.IsNotAllowed)

@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -5,14 +6,13 @@ using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Settings;
 using Ehgiz.DAL.Entities;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Ehgiz.Application.Services;
 
 public class TokenService : ITokenService
 {
-    private static readonly JsonWebTokenHandler _tokenHandler = new();
+    private static readonly JwtSecurityTokenHandler _tokenHandler = new();
     private readonly JwtSettings _jwtSettings;
 
     public TokenService(IOptions<JwtSettings> jwtSettings)
@@ -37,16 +37,14 @@ public class TokenService : ITokenService
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var descriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(claims),
-            Expires = expiresAt,
-            Issuer = _jwtSettings.Issuer,
-            Audience = _jwtSettings.Audience,
-            SigningCredentials = credentials
-        };
+        var token = new JwtSecurityToken(
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
+            claims: claims,
+            expires: expiresAt,
+            signingCredentials: credentials);
 
-        return (_tokenHandler.CreateToken(descriptor), expiresAt);
+        return (_tokenHandler.WriteToken(token), expiresAt);
     }
 
     public string GenerateRefreshToken()
