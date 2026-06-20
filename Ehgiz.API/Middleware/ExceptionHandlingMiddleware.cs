@@ -1,6 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-using Ehgiz.Application.Common;
-
 public class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
@@ -20,26 +17,18 @@ public class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
-            await HandleExceptionAsync(context, ex);
-        }
-    }
-
-    private async Task HandleExceptionAsync(HttpContext context, Exception ex)
-    {
-        var (statusCode, message) = ex switch
-        {
-            KeyNotFoundException => (StatusCodes.Status404NotFound, ex.Message),
-            UnauthorizedAccessException => (StatusCodes.Status403Forbidden, ex.Message),
-            ValidationException => (StatusCodes.Status400BadRequest, ex.Message),
-            _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
-        };
-
-        if (statusCode == StatusCodes.Status500InternalServerError)
             _logger.LogError(ex, ex.Message);
 
-        context.Response.ContentType = "application/json";
-        context.Response.StatusCode = statusCode;
+            context.Response.ContentType = "application/json";
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
-        await context.Response.WriteAsJsonAsync(ApiResponse<object>.Fail(message));
+            var response = new
+            {
+                Message = ex.Message,
+                StatusCode = context.Response.StatusCode
+            };
+
+            await context.Response.WriteAsJsonAsync(response);
+        }
     }
 }

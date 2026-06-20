@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using System.Text;
+using Ehgiz.API.Middleware;
 using Ehgiz.Application;
 using Ehgiz.Application.Common;
 using Ehgiz.Application.Interfaces;
@@ -28,11 +30,12 @@ builder.Services.AddDbContext<EhgizDbContext>(options =>
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole<int>>(options =>
 {
-    options.Password.RequiredLength = 8;
+    options.Password.RequiredLength = 7;
     options.Password.RequireDigit = true;
     options.Password.RequireUppercase = false;
     options.Password.RequireLowercase = true;
     options.User.RequireUniqueEmail = true;
+    options.SignIn.RequireConfirmedEmail = true;
     options.Lockout.MaxFailedAccessAttempts = 5;
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
 })
@@ -57,6 +60,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings.Issuer,
         ValidAudience = jwtSettings.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
+        RoleClaimType = ClaimTypes.Role,
         ClockSkew = TimeSpan.Zero
     };
 
@@ -75,19 +79,20 @@ builder.Services.AddAuthentication(options =>
         OnChallenge = async context =>
         {
             context.HandleResponse();
+
+            if (context.Response.HasStarted)
+                return;
+
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(
-                ApiResponse<object>.Fail("Unauthorized."));
+
+            var message = context.AuthenticateFailure is not null
+                ? "Invalid or expired access token."
+                : "Unauthorized.";
+
+            await context.Response.WriteAsJsonAsync(ApiResponse<object>.Fail(message));
         },
-        OnAuthenticationFailed = async context =>
-        {
-            context.NoResult();
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(
-                ApiResponse<object>.Fail("Invalid or expired access token."));
-        }
+        OnAuthenticationFailed = _ => Task.CompletedTask
     };
 });
 

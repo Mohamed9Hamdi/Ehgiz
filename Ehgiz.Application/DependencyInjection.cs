@@ -1,13 +1,12 @@
 
-using Ehgiz.Application.Interfaces;
+using Mapster;
+using MapsterMapper;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using System.Reflection;
 using Ehgiz.Application.Seed;
 using Ehgiz.Application.Services;
 using Ehgiz.Application.Settings;
-using Mapster;
-using MapsterMapper;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
 
 public static class DependencyInjection
@@ -17,7 +16,9 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
+        services.Configure<SendGridSettings>(configuration.GetSection("SendGrid"));
         services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<IEmailService, SendGridEmailService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IProfileService, ProfileService>();
         // Configure Mapster
