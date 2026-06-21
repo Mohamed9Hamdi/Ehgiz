@@ -1,4 +1,5 @@
 using Ehgiz.Application.DTOs.Messages;
+using Ehgiz.Application.DTOs.Notifications;
 using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
@@ -11,11 +12,13 @@ public class MessageService : IMessageService
 {
     private readonly IUnitOfWork _uow;
     private readonly IMessageBroadcaster _broadcaster;
+    private readonly INotificationService _notificationService;
 
-    public MessageService(IUnitOfWork uow, IMessageBroadcaster broadcaster)
+    public MessageService(IUnitOfWork uow, IMessageBroadcaster broadcaster, INotificationService notificationService)
     {
         _uow = uow;
         _broadcaster = broadcaster;
+        _notificationService = notificationService;
     }
 
     public async Task<ConversationDto> GetOrCreateConversationAsync(int currentUserId, int otherUserId)
@@ -106,6 +109,16 @@ public class MessageService : IMessageService
 
         var recipientId = conversation.User1Id == senderId ? conversation.User2Id : conversation.User1Id;
         await _broadcaster.SendMessageAsync(recipientId, result);
+
+        var preview = dto.Content.Length > 100 ? dto.Content[..100] + "…" : dto.Content;
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = recipientId,
+            Title = $"{sender!.FullName} sent you a message",
+            Message = preview,
+            Type = NotificationType.Message,
+            Url = $"/conversations/{conversationId}"
+        });
 
         return result;
     }

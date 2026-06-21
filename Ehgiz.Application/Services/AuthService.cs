@@ -76,6 +76,21 @@ public class AuthService : IAuthService
 
         await CreateAndSendVerificationCodeAsync(user);
 
+        try
+        {
+            await _notificationService.CreateAsync(new CreateNotificationDto
+            {
+                UserId = user.Id,
+                Title = "Welcome to Ehgiz!",
+                Message = "Your account has been created. Please verify your email to get started.",
+                Type = NotificationType.System
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to create registration notification for user {UserId}", user.Id);
+        }
+
         return new RegisterResultDTO(
             true,
             user.Id.ToString(),
@@ -149,9 +164,24 @@ public class AuthService : IAuthService
         }
 
         stored.UsedAt = DateTime.UtcNow;
-        await _userManager.UpdateAsync(user);
         user.EmailConfirmed = true;
+        await _userManager.UpdateAsync(user);
         await _uow.SaveChangesAsync();
+
+        try
+        {
+            await _notificationService.CreateAsync(new CreateNotificationDto
+            {
+                UserId = user.Id,
+                Title = "Email Verified",
+                Message = "Your email address has been verified. You can now log in.",
+                Type = NotificationType.System
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to create email verification notification for user {UserId}", user.Id);
+        }
 
         return new VerifyEmailResultDTO(
             true,
