@@ -24,7 +24,8 @@ public class UnitOfWork : IUnitOfWork
         IIssueReportRepository issueReports,
         IUserConnectionRepository userConnections,
         IRefreshTokenRepository refreshTokens,
-        IEmailVerificationCodeRepository emailVerificationCodes)
+        IEmailVerificationCodeRepository emailVerificationCodes,
+        IPasswordResetCodeRepository passwordResetCodes)
     {
         _context = context;
         Users = users;
@@ -41,6 +42,7 @@ public class UnitOfWork : IUnitOfWork
         UserConnections = userConnections;
         RefreshTokens = refreshTokens;
         EmailVerificationCodes = emailVerificationCodes;
+        PasswordResetCodes = passwordResetCodes;
     }
 
     public IUserRepository Users { get; }
@@ -70,6 +72,8 @@ public class UnitOfWork : IUnitOfWork
     public IRefreshTokenRepository RefreshTokens { get; }
 
     public IEmailVerificationCodeRepository EmailVerificationCodes { get; }
+
+    public IPasswordResetCodeRepository PasswordResetCodes { get; }
 
     public Task<int> SaveChangesAsync() =>
         _context.SaveChangesAsync();

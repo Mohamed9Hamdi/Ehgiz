@@ -21,4 +21,5 @@ public class ApplicationUser : IdentityUser<int>
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<UserConnection> UserConnections { get; set; } = [];
     public ICollection<EmailVerificationCode> EmailVerificationCodes { get; set; } = [];
+    public ICollection<PasswordResetCode> PasswordResetCodes { get; set; } = [];
 }

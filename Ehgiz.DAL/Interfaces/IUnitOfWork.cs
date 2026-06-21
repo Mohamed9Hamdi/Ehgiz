@@ -19,6 +19,7 @@ public interface IUnitOfWork : IAsyncDisposable
     IUserConnectionRepository UserConnections { get; }
     IRefreshTokenRepository RefreshTokens { get; }
     IEmailVerificationCodeRepository EmailVerificationCodes { get; }
+    IPasswordResetCodeRepository PasswordResetCodes { get; }
 
     Task<int> SaveChangesAsync();
     Task<IDbContextTransaction> BeginTransactionAsync();

@@ -26,4 +26,15 @@ public class RefreshTokenRepository : Repository<RefreshToken>, IRefreshTokenRep
             .Include(rt => rt.User)
             .FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
     }
+
+    public async Task RevokeAllActiveByUserIdAsync(int userId)
+    {
+        var now = DateTime.UtcNow;
+        var activeTokens = await _context.RefreshTokens
+            .Where(rt => rt.UserId == userId && rt.RevokedAt == null && rt.ExpiresAt > now)
+            .ToListAsync();
+
+        foreach (var token in activeTokens)
+            token.RevokedAt = now;
+    }
 }
