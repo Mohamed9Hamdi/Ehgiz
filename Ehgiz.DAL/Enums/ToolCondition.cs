@@ -3,5 +3,7 @@ namespace Ehgiz.DAL.Enums;
 public enum ToolCondition
 {
     New = 1,
-    Used = 2
+    Good = 2,
+    Fair = 3,
+    Poor = 4
 }

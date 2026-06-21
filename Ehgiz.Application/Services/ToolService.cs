@@ -147,7 +147,10 @@ public class ToolService : IToolService
         var uploadPath = Path.Combine(_env.ContentRootPath, "uploads", "tools", toolId.ToString());
         Directory.CreateDirectory(uploadPath);
 
-        var request = _httpContextAccessor.HttpContext!.Request;
+        if (_httpContextAccessor.HttpContext is null)
+            throw new InvalidOperationException("No HTTP context available.");
+
+        var request = _httpContextAccessor.HttpContext.Request;
         var baseUrl = $"{request.Scheme}://{request.Host}";
 
         var urls = new List<string>();

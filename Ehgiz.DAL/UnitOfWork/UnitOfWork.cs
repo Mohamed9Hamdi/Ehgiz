@@ -69,5 +69,5 @@ public class UnitOfWork : IUnitOfWork
     public Task<IDbContextTransaction> BeginTransactionAsync() =>
         _context.Database.BeginTransactionAsync();
 
-    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    public ValueTask DisposeAsync() => _context.DisposeAsync();
 }

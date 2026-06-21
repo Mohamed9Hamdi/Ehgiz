@@ -1,5 +1,4 @@
-﻿using Ehgiz.Application.DTOs;
-using Ehgiz.Application.DTOs.Tools;
+﻿using Ehgiz.Application.DTOs.Tools;
 using Ehgiz.DAL.Entities;
 using Mapster;
 
@@ -12,7 +11,7 @@ public class ToolProfile : IRegister
     {
    
         config.NewConfig<Tool, ToolDto>()
-            .Map(dest => dest.OwnerName, src => src.Owner.UserName ?? string.Empty)
+            .Map(dest => dest.OwnerName, src => src.Owner.FullName)
             .Map(dest => dest.CategoryName, src => src.Category.Name)
             .Map(dest => dest.Condition, src => src.Condition.HasValue ? src.Condition.Value.ToString() : null)
             .Map(dest => dest.ImageUrls, src => src.Images.Select(i => i.ImageUrl).ToList());

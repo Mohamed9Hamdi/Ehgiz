@@ -1,4 +1,3 @@
-
 using Mapster;
 using MapsterMapper;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,6 +8,7 @@ using Ehgiz.Application.Services;
 using Ehgiz.Application.Settings;
 using Ehgiz.Application.Interfaces;
 
+namespace Ehgiz.Application;
 
 public static class DependencyInjection
 {
