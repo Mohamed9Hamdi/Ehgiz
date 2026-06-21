@@ -1,5 +1,8 @@
+using System.Security.Claims;
 using System.Text;
+using Ehgiz.API.Middleware;
 using Ehgiz.Application;
+using Ehgiz.Application.Common;
 using Ehgiz.Application.Seed;
 using Ehgiz.Application.Settings;
 using Ehgiz.DAL;
@@ -27,11 +30,12 @@ builder.Services.AddDbContext<EhgizDbContext>(options =>
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole<int>>(options =>
 {
-    options.Password.RequiredLength = 8;
+    options.Password.RequiredLength = 7;
     options.Password.RequireDigit = true;
     options.Password.RequireUppercase = false;
     options.Password.RequireLowercase = true;
     options.User.RequireUniqueEmail = true;
+    options.SignIn.RequireConfirmedEmail = true;
     options.Lockout.MaxFailedAccessAttempts = 5;
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
 })
@@ -56,6 +60,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings.Issuer,
         ValidAudience = jwtSettings.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
+        RoleClaimType = ClaimTypes.Role,
         ClockSkew = TimeSpan.Zero
     };
 
@@ -70,7 +75,24 @@ builder.Services.AddAuthentication(options =>
             }
 
             return Task.CompletedTask;
-        }
+        },
+        OnChallenge = async context =>
+        {
+            context.HandleResponse();
+
+            if (context.Response.HasStarted)
+                return;
+
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/json";
+
+            var message = context.AuthenticateFailure is not null
+                ? "Invalid or expired access token."
+                : "Unauthorized.";
+
+            await context.Response.WriteAsJsonAsync(ApiResponse<object>.Fail(message));
+        },
+        OnAuthenticationFailed = _ => Task.CompletedTask
     };
 });
 
@@ -79,7 +101,7 @@ builder.Services.AddCors(o => o.AddPolicy("Angular", p =>
      .AllowAnyHeader()
      .AllowAnyMethod()
      .AllowCredentials()));
-
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddDalServices();
 builder.Services.AddApplicationServices(builder.Configuration);
 
@@ -133,7 +155,7 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ExceptionHandlingMiddleware>(); 
 app.UseStaticFiles();
 app.UseHttpsRedirection();
-
+app.UseStaticFiles();
 app.UseCors("Angular");
 
 app.UseAuthentication();

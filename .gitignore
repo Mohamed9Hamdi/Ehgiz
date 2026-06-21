@@ -9,6 +9,8 @@
 *.user
 *.userosscache
 *.sln.docstates
+.env
+*.env
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -67,6 +69,11 @@ artifacts/
 
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
+
+
+# uploads
+uploads/
+uploads/tools/
 
 # StyleCop
 StyleCopReport.xml

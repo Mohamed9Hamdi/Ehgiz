@@ -88,14 +88,14 @@ public class BookingService : IBookingService
         await _uow.Bookings.AddAsync(booking);
 
         // Notify owner about new booking request
-        await _uow.Notifications.AddAsync(new Notification
-        {
-            UserId = tool.OwnerId,
-            Type = NotificationType.BookingUpdate,
-            Content = $"New booking request for '{tool.Name}' from {(await _uow.Users.GetByIdAsync(renterId))?.FullName ?? "a renter"}.",
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        });
+        //await _uow.Notifications.AddAsync(new Notification
+        //{
+        //    UserId = tool.OwnerId,
+        //    Type = NotificationType.BookingUpdate,
+        //    Content = $"New booking request for '{tool.Name}' from {(await _uow.Users.GetByIdAsync(renterId))?.FullName ?? "a renter"}.",
+        //    IsRead = false,
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         await _uow.SaveChangesAsync();
 
@@ -122,14 +122,14 @@ public class BookingService : IBookingService
 
         booking.Status = BookingStatus.Accepted;
 
-        await _uow.Notifications.AddAsync(new Notification
-        {
-            UserId = booking.RenterId,
-            Type = NotificationType.BookingUpdate,
-            Content = $"Your booking for '{booking.Tool.Name}' has been accepted by the owner.",
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        });
+        //await _uow.Notifications.AddAsync(new Notification
+        //{
+        //    UserId = booking.RenterId,
+        //    Type = NotificationType.BookingUpdate,
+        //    Content = $"Your booking for '{booking.Tool.Name}' has been accepted by the owner.",
+        //    IsRead = false,
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         await _uow.SaveChangesAsync();
     }
@@ -158,14 +158,14 @@ public class BookingService : IBookingService
             booking.Payment.EscrowStatus = EscrowStatus.Refunded;
         }
 
-        await _uow.Notifications.AddAsync(new Notification
-        {
-            UserId = booking.RenterId,
-            Type = NotificationType.BookingUpdate,
-            Content = $"Your booking for '{booking.Tool.Name}' has been rejected. A full refund has been issued.",
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        });
+        //await _uow.Notifications.AddAsync(new Notification
+        //{
+        //    UserId = booking.RenterId,
+        //    Type = NotificationType.BookingUpdate,
+        //    Content = $"Your booking for '{booking.Tool.Name}' has been rejected. A full refund has been issued.",
+        //    IsRead = false,
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         await _uow.SaveChangesAsync();
     }
@@ -199,14 +199,14 @@ public class BookingService : IBookingService
             ? booking.Tool.OwnerId
             : booking.RenterId;
 
-        await _uow.Notifications.AddAsync(new Notification
-        {
-            UserId = notifyUserId,
-            Type = NotificationType.BookingUpdate,
-            Content = $"Booking #{bookingId} for '{booking.Tool.Name}' has been cancelled. Refund issued.",
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        });
+        //await _uow.Notifications.AddAsync(new Notification
+        //{
+        //    UserId = notifyUserId,
+        //    Type = NotificationType.BookingUpdate,
+        //    Content = $"Booking #{bookingId} for '{booking.Tool.Name}' has been cancelled. Refund issued.",
+        //    IsRead = false,
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         await _uow.SaveChangesAsync();
     }
@@ -238,14 +238,14 @@ public class BookingService : IBookingService
         // Save handover images
         await SaveHandoverImagesAsync(handover, dto);
 
-        await _uow.Notifications.AddAsync(new Notification
-        {
-            UserId = booking.RenterId,
-            Type = NotificationType.HandoverPending,
-            Content = $"The owner has submitted a delivery for '{booking.Tool.Name}'. Please inspect and confirm.",
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        });
+        //await _uow.Notifications.AddAsync(new Notification
+        //{
+        //    UserId = booking.RenterId,
+        //    Type = NotificationType.HandoverPending,
+        //    Content = $"The owner has submitted a delivery for '{booking.Tool.Name}'. Please inspect and confirm.",
+        //    IsRead = false,
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         await _uow.SaveChangesAsync();
     }
@@ -274,14 +274,14 @@ public class BookingService : IBookingService
         {
             booking.Status = BookingStatus.Active;
 
-            await _uow.Notifications.AddAsync(new Notification
-            {
-                UserId = booking.Tool.OwnerId,
-                Type = NotificationType.HandoverAccepted,
-                Content = $"The renter has accepted the delivery of '{booking.Tool.Name}'. Rental is now active.",
-                IsRead = false,
-                CreatedAt = DateTime.UtcNow
-            });
+            //await _uow.Notifications.AddAsync(new Notification
+            //{
+            //    UserId = booking.Tool.OwnerId,
+            //    Type = NotificationType.HandoverAccepted,
+            //    Content = $"The renter has accepted the delivery of '{booking.Tool.Name}'. Rental is now active.",
+            //    IsRead = false,
+            //    CreatedAt = DateTime.UtcNow
+            //});
         }
         else
         {
@@ -298,14 +298,14 @@ public class BookingService : IBookingService
                 CreatedAt = DateTime.UtcNow
             });
 
-            await _uow.Notifications.AddAsync(new Notification
-            {
-                UserId = booking.Tool.OwnerId,
-                Type = NotificationType.HandoverDisputed,
-                Content = $"The renter has reported an issue with the delivery of '{booking.Tool.Name}'.",
-                IsRead = false,
-                CreatedAt = DateTime.UtcNow
-            });
+            //await _uow.Notifications.AddAsync(new Notification
+            //{
+            //    UserId = booking.Tool.OwnerId,
+            //    Type = NotificationType.HandoverDisputed,
+            //    Content = $"The renter has reported an issue with the delivery of '{booking.Tool.Name}'.",
+            //    IsRead = false,
+            //    CreatedAt = DateTime.UtcNow
+            //});
         }
 
         await _uow.SaveChangesAsync();
@@ -338,14 +338,14 @@ public class BookingService : IBookingService
         // Save handover images
         await SaveHandoverImagesAsync(handover, dto);
 
-        await _uow.Notifications.AddAsync(new Notification
-        {
-            UserId = booking.Tool.OwnerId,
-            Type = NotificationType.HandoverPending,
-            Content = $"The renter has submitted a return for '{booking.Tool.Name}'. Please inspect and confirm.",
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        });
+        //await _uow.Notifications.AddAsync(new Notification
+        //{
+        //    UserId = booking.Tool.OwnerId,
+        //    Type = NotificationType.HandoverPending,
+        //    Content = $"The renter has submitted a return for '{booking.Tool.Name}'. Please inspect and confirm.",
+        //    IsRead = false,
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         await _uow.SaveChangesAsync();
     }
@@ -374,14 +374,14 @@ public class BookingService : IBookingService
         {
             await SettleBookingAsync(booking, handover);
 
-            await _uow.Notifications.AddAsync(new Notification
-            {
-                UserId = booking.RenterId,
-                Type = NotificationType.HandoverAccepted,
-                Content = $"The owner has accepted the return of '{booking.Tool.Name}'. Booking completed.",
-                IsRead = false,
-                CreatedAt = DateTime.UtcNow
-            });
+            //await _uow.Notifications.AddAsync(new Notification
+            //{
+            //    UserId = booking.RenterId,
+            //    Type = NotificationType.HandoverAccepted,
+            //    Content = $"The owner has accepted the return of '{booking.Tool.Name}'. Booking completed.",
+            //    IsRead = false,
+            //    CreatedAt = DateTime.UtcNow
+            //});
         }
         else
         {
@@ -398,14 +398,14 @@ public class BookingService : IBookingService
                 CreatedAt = DateTime.UtcNow
             });
 
-            await _uow.Notifications.AddAsync(new Notification
-            {
-                UserId = booking.RenterId,
-                Type = NotificationType.HandoverDisputed,
-                Content = $"The owner has reported an issue with the return of '{booking.Tool.Name}'.",
-                IsRead = false,
-                CreatedAt = DateTime.UtcNow
-            });
+            //await _uow.Notifications.AddAsync(new Notification
+            //{
+            //    UserId = booking.RenterId,
+            //    Type = NotificationType.HandoverDisputed,
+            //    Content = $"The owner has reported an issue with the return of '{booking.Tool.Name}'.",
+            //    IsRead = false,
+            //    CreatedAt = DateTime.UtcNow
+            //});
         }
 
         await _uow.SaveChangesAsync();

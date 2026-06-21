@@ -1,6 +1,11 @@
+using System.Security.Claims;
 using Ehgiz.Application.Common;
 using Ehgiz.Application.DTOs.Auth;
+using Ehgiz.Application.DTOs.Profile;
+using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Services;
+using MapsterMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ehgiz.API.Controllers;
@@ -13,10 +18,17 @@ public class AuthController : ControllerBase
     private const string RefreshCookiePath = "/api/auth/refresh";
 
     private readonly IAuthService _authService;
+    private readonly IProfileService _profileService;
+    private readonly IMapper _mapper;
 
-    public AuthController(IAuthService authService)
+    public AuthController(
+        IAuthService authService,
+        IProfileService profileService,
+        IMapper mapper)
     {
         _authService = authService;
+        _profileService = profileService;
+        _mapper = mapper;
     }
 
     [HttpPost("register")]
@@ -39,16 +51,17 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequestDTO dto)
     {
-        var tokens = await _authService.LoginAsync(dto);
-        if (tokens is null)
+        var result = await _authService.LoginAsync(dto);
+        if (result.Tokens is null)
         {
-            return Unauthorized(ApiResponse<LoginResponseDTO>.Fail("Invalid email or password."));
+            return Unauthorized(ApiResponse<LoginResponseDTO>.Fail(
+                result.FailureMessage ?? "Invalid email or password."));
         }
 
-        SetRefreshCookie(tokens.RawRefreshToken);
+        SetRefreshCookie(result.Tokens.RawRefreshToken);
 
         return Ok(ApiResponse<LoginResponseDTO>.Success(
-            new LoginResponseDTO(tokens.AccessToken, tokens.AccessTokenExpiresAt),
+            _mapper.Map<LoginResponseDTO>(result.Tokens),
             "Login successful"));
     }
 
@@ -71,20 +84,75 @@ public class AuthController : ControllerBase
         SetRefreshCookie(tokens.RawRefreshToken);
 
         return Ok(ApiResponse<LoginResponseDTO>.Success(
-            new LoginResponseDTO(tokens.AccessToken, tokens.AccessTokenExpiresAt),
+            _mapper.Map<LoginResponseDTO>(tokens),
             "Token refreshed successfully"));
     }
 
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequestDTO dto)
+    {
+        var result = await _authService.VerifyEmailAsync(dto);
+
+        if (!result.Succeeded)
+        {
+            return BadRequest(ApiResponse<object>.Fail(
+                result.Message,
+                result.Errors.ToList()));
+        }
+
+        return Ok(ApiResponse<object>.Success(null!, result.Message));
+    }
+
+    [HttpPost("resend-verification")]
+    public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequestDTO dto)
+    {
+        var result = await _authService.ResendVerificationAsync(dto);
+
+        if (!result.Succeeded)
+        {
+            return BadRequest(ApiResponse<object>.Fail(result.Message));
+        }
+
+        return Ok(ApiResponse<object>.Success(null!, result.Message));
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> GetProfile()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(ApiResponse<UserProfileDTO>.Fail("Unauthorized."));
+        }
+
+        var profile = await _profileService.GetProfileAsync(userId);
+        if (profile is null)
+        {
+            return NotFound(ApiResponse<UserProfileDTO>.Fail("User not found."));
+        }
+
+        return Ok(ApiResponse<UserProfileDTO>.Success(profile, "Profile retrieved successfully."));
+    }
+
+    [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
         if (Request.Cookies.TryGetValue(RefreshCookieName, out var rawRefreshToken) &&
             !string.IsNullOrWhiteSpace(rawRefreshToken))
         {
-            await _authService.LogoutAsync(rawRefreshToken);
+            await _authService.LogoutSessionAsync(rawRefreshToken);
         }
 
-        DeleteRefreshCookie();
+        Response.Cookies.Delete(RefreshCookieName, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Path = RefreshCookiePath
+        });
+
         return NoContent();
     }
 
@@ -101,14 +169,12 @@ public class AuthController : ControllerBase
 
     private void DeleteRefreshCookie()
     {
-        Response.Cookies.Append(RefreshCookieName, string.Empty, new CookieOptions
+        Response.Cookies.Delete(RefreshCookieName, new CookieOptions
         {
             HttpOnly = true,
             Secure = true,
             SameSite = SameSiteMode.Strict,
-            Path = RefreshCookiePath,
-            Expires = DateTimeOffset.UnixEpoch,
-            MaxAge = TimeSpan.Zero
+            Path = RefreshCookiePath
         });
     }
 }

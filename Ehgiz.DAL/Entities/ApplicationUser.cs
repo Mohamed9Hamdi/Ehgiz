@@ -22,4 +22,5 @@ public class ApplicationUser : IdentityUser<int>
     public ICollection<IssueReport> IssueReports { get; set; } = [];
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public Wallet? Wallet { get; set; }
+    public ICollection<EmailVerificationCode> EmailVerificationCodes { get; set; } = [];
 }
