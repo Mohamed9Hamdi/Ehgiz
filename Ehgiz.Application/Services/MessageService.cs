@@ -109,6 +109,7 @@ public class MessageService : IMessageService
 
         var recipientId = conversation.User1Id == senderId ? conversation.User2Id : conversation.User1Id;
         await _broadcaster.SendMessageAsync(recipientId, result);
+        await _broadcaster.SendMessageAsync(senderId, result);
 
         var preview = dto.Content.Length > 100 ? dto.Content[..100] + "…" : dto.Content;
         await _notificationService.CreateAsync(new CreateNotificationDto
