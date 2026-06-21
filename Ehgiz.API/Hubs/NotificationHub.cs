@@ -45,8 +45,11 @@ public class NotificationHub : Hub
         await base.OnDisconnectedAsync(exception);
     }
 
-    private int GetUserId() =>
-        int.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    private int GetUserId()
+    {
+        var claim = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(claim, out var id) ? id : throw new HubException("Unauthorized");
+    }
 
     private static string GroupName(int userId) => $"user_{userId}";
 }

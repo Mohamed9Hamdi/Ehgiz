@@ -22,7 +22,9 @@ public class UnitOfWork : IUnitOfWork
         IMessageRepository messages,
         INotificationRepository notifications,
         IIssueReportRepository issueReports,
-        IUserConnectionRepository userConnections)
+        IUserConnectionRepository userConnections,
+        IRefreshTokenRepository refreshTokens,
+        IEmailVerificationCodeRepository emailVerificationCodes)
     {
         _context = context;
         Users = users;
@@ -37,6 +39,8 @@ public class UnitOfWork : IUnitOfWork
         Notifications = notifications;
         IssueReports = issueReports;
         UserConnections = userConnections;
+        RefreshTokens = refreshTokens;
+        EmailVerificationCodes = emailVerificationCodes;
     }
 
     public IUserRepository Users { get; }
@@ -62,6 +66,10 @@ public class UnitOfWork : IUnitOfWork
     public IIssueReportRepository IssueReports { get; }
 
     public IUserConnectionRepository UserConnections { get; }
+
+    public IRefreshTokenRepository RefreshTokens { get; }
+
+    public IEmailVerificationCodeRepository EmailVerificationCodes { get; }
 
     public Task<int> SaveChangesAsync() =>
         _context.SaveChangesAsync();

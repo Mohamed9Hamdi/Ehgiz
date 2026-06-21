@@ -106,6 +106,7 @@ builder.Services.AddDalServices();
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddScoped<INotificationBroadcaster, NotificationBroadcaster>();
+builder.Services.AddScoped<IMessageBroadcaster, MessageBroadcaster>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -158,5 +159,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();
