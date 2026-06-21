@@ -40,3 +40,20 @@ public record BookingDto(
     IEnumerable<HandoverDto>? Handovers,
     IReadOnlyList<string> AllowedActions,
     bool HasReview);
+
+public record ReportIssueRequest(
+    string Title,
+    string Description);
+
+public record ToolAvailabilityDto(
+    int ToolId,
+    int Year,
+    int Month,
+    IReadOnlyList<BookedDateRange> BookedRanges);
+
+public record BookedDateRange(
+    int BookingId,
+    DateTime StartDate,
+    DateTime EndDate,
+    string Status);
+

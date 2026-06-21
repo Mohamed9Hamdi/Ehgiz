@@ -32,14 +32,14 @@ public class PaymentsController : ControllerBase
     }
 
     // GET api/payments/booking/{bookingId}
-    [HttpGet("booking/{bookingId:int}")]
-    [Authorize]
-    public async Task<IActionResult> GetPaymentByBooking(int bookingId)
-    {
-        var result = await _paymentService.GetPaymentByBookingAsync(bookingId);
-        if (result is null)
-            return NotFound(ApiResponse<PaymentDto>.Fail("No payment found for this booking."));
+    // [HttpGet("booking/{bookingId:int}")]
+    // [Authorize]
+    // public async Task<IActionResult> GetPaymentByBooking(int bookingId)
+    // {
+    //     var result = await _paymentService.GetPaymentByBookingAsync(bookingId);
+    //     if (result is null)
+    //         return NotFound(ApiResponse<PaymentDto>.Fail("No payment found for this booking."));
 
-        return Ok(ApiResponse<PaymentDto>.Success(result));
-    }
+    //     return Ok(ApiResponse<PaymentDto>.Success(result));
+    // }
 }

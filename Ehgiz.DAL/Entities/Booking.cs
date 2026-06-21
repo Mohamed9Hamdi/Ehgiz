@@ -10,6 +10,10 @@ public class Booking
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public decimal TotalPrice { get; set; }
+    public decimal RentalCost { get; set; }
+    public decimal InsuranceAmount { get; set; }
+    public decimal PlatformFee { get; set; }
+    public decimal PricePerDay { get; set; }
     public BookingStatus? Status { get; set; }
     public string? AdminResolutionNotes { get; set; }
     public DateTime CreatedAt { get; set; }

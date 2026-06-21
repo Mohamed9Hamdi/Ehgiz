@@ -4,6 +4,7 @@ using Ehgiz.DAL.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ehgiz.DAL.Migrations
 {
     [DbContext(typeof(EhgizDbContext))]
-    partial class EhgizDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260621165715_FixBookingAndAddRevenueTracking")]
+    partial class FixBookingAndAddRevenueTracking
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -570,7 +573,7 @@ namespace Ehgiz.DAL.Migrations
 
                     b.HasIndex("BookingId");
 
-                    b.ToTable("PlatformRevenueLedgers", (string)null);
+                    b.ToTable("PlatformRevenueLedgers");
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.RefreshToken", b =>
@@ -1115,7 +1118,7 @@ namespace Ehgiz.DAL.Migrations
                     b.HasOne("Ehgiz.DAL.Entities.Booking", "Booking")
                         .WithMany()
                         .HasForeignKey("BookingId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Booking");

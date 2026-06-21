@@ -20,4 +20,10 @@ public interface IBookingService
     Task RespondDeliveryHandoverAsync(int bookingId, int renterId, RespondHandoverRequest dto);
     Task SubmitReturnHandoverAsync(int bookingId, int renterId, SubmitHandoverRequest dto);
     Task RespondReturnHandoverAsync(int bookingId, int ownerId, RespondHandoverRequest dto);
+
+    // Issue reporting
+    Task ReportIssueAsync(int bookingId, int userId, ReportIssueRequest dto);
+
+    // Calendar availability
+    Task<ToolAvailabilityDto> GetToolAvailabilityAsync(int toolId, int year, int month);
 }

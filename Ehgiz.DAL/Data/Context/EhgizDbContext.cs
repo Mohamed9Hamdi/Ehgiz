@@ -29,7 +29,8 @@ public class EhgizDbContext : IdentityDbContext<ApplicationUser, IdentityRole<in
     public DbSet<Handover> Handovers => Set<Handover>();
     public DbSet<HandoverImage> HandoverImages => Set<HandoverImage>();
     public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
-
+    public DbSet<PlatformRevenueLedger> PlatformRevenueLedgers => Set<PlatformRevenueLedger>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

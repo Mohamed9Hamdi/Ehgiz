@@ -13,13 +13,11 @@ namespace Ehgiz.Application.Services;
 public class BookingService : IBookingService
 {
     private readonly IUnitOfWork _uow;
-    private readonly PlatformSettings _platform;
     private readonly string _handoverUploadPath;
 
-    public BookingService(IUnitOfWork uow, IOptions<PlatformSettings> platform, IWebHostEnvironment env)
+    public BookingService(IUnitOfWork uow, IWebHostEnvironment env)
     {
         _uow = uow;
-        _platform = platform.Value;
         _handoverUploadPath = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "uploads", "handover");
     }
 
@@ -35,9 +33,6 @@ public class BookingService : IBookingService
         var tool = await _uow.Tools.GetByIdAsync(dto.ToolId)
             ?? throw new KeyNotFoundException($"Tool {dto.ToolId} not found.");
 
-        if (!tool.IsAvailable)
-            throw new InvalidOperationException("This tool is not available for booking.");
-
         if (tool.OwnerId == renterId)
             throw new InvalidOperationException("You cannot rent your own tool.");
 
@@ -49,7 +44,11 @@ public class BookingService : IBookingService
 
         var days = (int)(dto.EndDate.Date - dto.StartDate.Date).TotalDays;
         var rentalCost = days * tool.PricePerDay;
-        var platformFee = Math.Round(rentalCost * (_platform.FeePercent / 100m), 2);
+
+        var feeSetting = await _uow.SystemSettings.GetByIdAsync("PlatformFeePercent");
+        var feePercent = feeSetting != null && decimal.TryParse(feeSetting.Value, out var parsedFee) ? parsedFee : 10m;
+
+        var platformFee = Math.Round(rentalCost * (feePercent / 100m), 2);
         var totalCharged = rentalCost + tool.InsurancePrice;
 
         var wallet = await _uow.Wallets.GetByUserIdAsync(renterId)
@@ -58,6 +57,8 @@ public class BookingService : IBookingService
         if (wallet.Balance < totalCharged)
             throw new InvalidOperationException(
                 $"Insufficient wallet balance. Required: {totalCharged:C}, Available: {wallet.Balance:C}");
+
+        await using var transaction = await _uow.BeginTransactionAsync();
 
         // Deduct from wallet → hold in escrow
         wallet.Balance -= totalCharged;
@@ -81,23 +82,17 @@ public class BookingService : IBookingService
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
             TotalPrice = totalCharged,
+            RentalCost = rentalCost,
+            InsuranceAmount = tool.InsurancePrice,
+            PlatformFee = platformFee,
+            PricePerDay = tool.PricePerDay,
             Status = BookingStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };
 
         await _uow.Bookings.AddAsync(booking);
-
-        // Notify owner about new booking request
-        //await _uow.Notifications.AddAsync(new Notification
-        //{
-        //    UserId = tool.OwnerId,
-        //    Type = NotificationType.BookingUpdate,
-        //    Content = $"New booking request for '{tool.Name}' from {(await _uow.Users.GetByIdAsync(renterId))?.FullName ?? "a renter"}.",
-        //    IsRead = false,
-        //    CreatedAt = DateTime.UtcNow
-        //});
-
         await _uow.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         return new CreateBookingResponse(
             BookingId: booking.Id,
@@ -146,6 +141,8 @@ public class BookingService : IBookingService
         if (booking.Status != BookingStatus.Pending)
             throw new InvalidOperationException("Only pending bookings can be rejected.");
 
+        await using var transaction = await _uow.BeginTransactionAsync();
+
         // Full refund
         await RefundRenterAsync(booking);
 
@@ -158,16 +155,8 @@ public class BookingService : IBookingService
             booking.Payment.EscrowStatus = EscrowStatus.Refunded;
         }
 
-        //await _uow.Notifications.AddAsync(new Notification
-        //{
-        //    UserId = booking.RenterId,
-        //    Type = NotificationType.BookingUpdate,
-        //    Content = $"Your booking for '{booking.Tool.Name}' has been rejected. A full refund has been issued.",
-        //    IsRead = false,
-        //    CreatedAt = DateTime.UtcNow
-        //});
-
         await _uow.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     // ── Cancel Booking ──────────────────────────────────────────────────────
@@ -182,6 +171,8 @@ public class BookingService : IBookingService
         if (booking.Status != BookingStatus.Pending && booking.Status != BookingStatus.Accepted)
             throw new InvalidOperationException("Only pending or accepted bookings can be cancelled.");
 
+        await using var transaction = await _uow.BeginTransactionAsync();
+
         // Full refund
         await RefundRenterAsync(booking);
 
@@ -194,21 +185,8 @@ public class BookingService : IBookingService
             booking.Payment.EscrowStatus = EscrowStatus.Refunded;
         }
 
-        // Notify the other party
-        var notifyUserId = booking.RenterId == requestingUserId
-            ? booking.Tool.OwnerId
-            : booking.RenterId;
-
-        //await _uow.Notifications.AddAsync(new Notification
-        //{
-        //    UserId = notifyUserId,
-        //    Type = NotificationType.BookingUpdate,
-        //    Content = $"Booking #{bookingId} for '{booking.Tool.Name}' has been cancelled. Refund issued.",
-        //    IsRead = false,
-        //    CreatedAt = DateTime.UtcNow
-        //});
-
         await _uow.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     // ── Submit Delivery Handover (Owner) ────────────────────────────────────
@@ -372,16 +350,10 @@ public class BookingService : IBookingService
 
         if (dto.Accept)
         {
+            await using var transaction = await _uow.BeginTransactionAsync();
             await SettleBookingAsync(booking, handover);
-
-            //await _uow.Notifications.AddAsync(new Notification
-            //{
-            //    UserId = booking.RenterId,
-            //    Type = NotificationType.HandoverAccepted,
-            //    Content = $"The owner has accepted the return of '{booking.Tool.Name}'. Booking completed.",
-            //    IsRead = false,
-            //    CreatedAt = DateTime.UtcNow
-            //});
+            await _uow.SaveChangesAsync();
+            await transaction.CommitAsync();
         }
         else
         {
@@ -398,17 +370,8 @@ public class BookingService : IBookingService
                 CreatedAt = DateTime.UtcNow
             });
 
-            //await _uow.Notifications.AddAsync(new Notification
-            //{
-            //    UserId = booking.RenterId,
-            //    Type = NotificationType.HandoverDisputed,
-            //    Content = $"The owner has reported an issue with the return of '{booking.Tool.Name}'.",
-            //    IsRead = false,
-            //    CreatedAt = DateTime.UtcNow
-            //});
+            await _uow.SaveChangesAsync();
         }
-
-        await _uow.SaveChangesAsync();
     }
 
     // ── Queries ─────────────────────────────────────────────────────────────
@@ -436,6 +399,64 @@ public class BookingService : IBookingService
         return MapToDto(booking, requestingUserId, isOwner);
     }
 
+    // ── Report Issue ────────────────────────────────────────────────────────
+    public async Task ReportIssueAsync(int bookingId, int userId, ReportIssueRequest dto)
+    {
+        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId)
+            ?? throw new KeyNotFoundException($"Booking {bookingId} not found.");
+
+        if (booking.RenterId != userId && booking.Tool.OwnerId != userId)
+            throw new UnauthorizedAccessException("You are not authorized to report an issue on this booking.");
+
+        if (booking.Status != BookingStatus.Active &&
+            booking.Status != BookingStatus.ReturnHandover &&
+            booking.Status != BookingStatus.Disputed)
+            throw new InvalidOperationException(
+                "Issues can only be reported on active, return-handover, or disputed bookings.");
+
+        await _uow.IssueReports.AddAsync(new IssueReport
+        {
+            BookingId = bookingId,
+            ReporterId = userId,
+            Title = dto.Title,
+            Description = dto.Description,
+            Status = IssueReportStatus.Open,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        // Move to disputed if not already disputed
+        if (booking.Status != BookingStatus.Disputed)
+            booking.Status = BookingStatus.Disputed;
+
+        await _uow.SaveChangesAsync();
+    }
+
+    // ── Tool Availability (Calendar) ────────────────────────────────────────
+    public async Task<ToolAvailabilityDto> GetToolAvailabilityAsync(int toolId, int year, int month)
+    {
+        var tool = await _uow.Tools.GetByIdAsync(toolId)
+            ?? throw new KeyNotFoundException($"Tool {toolId} not found.");
+
+        var from = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var to = from.AddMonths(1);
+
+        var bookings = await _uow.Bookings.GetBookedDatesByToolIdAsync(toolId, from, to);
+
+        var bookedRanges = bookings.Select(b => new BookedDateRange(
+            BookingId: b.Id,
+            StartDate: b.StartDate,
+            EndDate: b.EndDate,
+            Status: b.Status?.ToString() ?? string.Empty
+        )).ToList();
+
+        return new ToolAvailabilityDto(
+            ToolId: toolId,
+            Year: year,
+            Month: month,
+            BookedRanges: bookedRanges
+        );
+    }
+
     // ── Private Helpers ─────────────────────────────────────────────────────
 
     /// <summary>
@@ -444,18 +465,15 @@ public class BookingService : IBookingService
     /// </summary>
     private async Task SettleBookingAsync(Booking booking, Handover returnHandover)
     {
-        var days = (int)(booking.EndDate.Date - booking.StartDate.Date).TotalDays;
-        var rentalCost = days * booking.Tool.PricePerDay;
-        var platformFee = Math.Round(rentalCost * (_platform.FeePercent / 100m), 2);
-        var ownerEarning = rentalCost - platformFee;
-        var insuranceAmount = booking.Tool.InsurancePrice;
+        var ownerEarning = booking.RentalCost - booking.PlatformFee;
+        var insuranceAmount = booking.InsuranceAmount;
 
         // Late fee calculation
         var lateFee = 0m;
         if (returnHandover.SubmittedAt > booking.EndDate)
         {
             var lateHours = Math.Ceiling((decimal)(returnHandover.SubmittedAt - booking.EndDate).TotalHours);
-            var hourlyRate = booking.Tool.PricePerDay / 24m;
+            var hourlyRate = booking.PricePerDay / 24m;
             lateFee = Math.Min(lateHours * hourlyRate, insuranceAmount);
             lateFee = Math.Round(lateFee, 2);
         }
@@ -474,9 +492,20 @@ public class BookingService : IBookingService
             Amount = ownerEarning,
             Type = WalletTransactionType.EarningCredit,
             Reference = booking.Id.ToString(),
-            Description = $"Earnings for booking #{booking.Id} (after {_platform.FeePercent}% platform fee)",
+            Description = $"Earnings for booking #{booking.Id} (after platform fee)",
             CreatedAt = DateTime.UtcNow
         });
+
+        // Record platform fee in ledger
+        if (booking.PlatformFee > 0)
+        {
+            await _uow.PlatformRevenueLedgers.AddAsync(new PlatformRevenueLedger
+            {
+                BookingId = booking.Id,
+                Amount = booking.PlatformFee,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
 
         if (lateFee > 0)
         {
@@ -519,7 +548,6 @@ public class BookingService : IBookingService
         // Update booking status
         booking.Status = BookingStatus.Completed;
         booking.CompletedAt = DateTime.UtcNow;
-        booking.Tool.IsAvailable = true;
 
         if (booking.Payment != null)
         {
@@ -680,6 +708,7 @@ public class BookingService : IBookingService
                 }
                 else
                 {
+                    actions.Add("ReportIssue");
                     actions.Add("MessageOwner");
                 }
                 break;
@@ -700,6 +729,7 @@ public class BookingService : IBookingService
                 break;
 
             case BookingStatus.Disputed:
+                actions.Add("ReportIssue");
                 if (isOwner)
                     actions.Add("MessageRenter");
                 else
@@ -791,7 +821,7 @@ public class BookingService : IBookingService
     private static BookingDto MapToDto(Booking b, int requestingUserId, bool isOwner)
     {
         var days = (int)(b.EndDate.Date - b.StartDate.Date).TotalDays;
-        var rentalCost = b.Tool != null ? days * b.Tool.PricePerDay : 0;
+        var rentalCost = b.RentalCost;
 
         return new BookingDto(
             Id: b.Id,
@@ -808,7 +838,7 @@ public class BookingService : IBookingService
             EndDate: b.EndDate,
             Days: days,
             RentalCost: rentalCost,
-            InsurancePrice: b.Tool?.InsurancePrice ?? 0,
+            InsurancePrice: b.InsuranceAmount,
             TotalPrice: b.TotalPrice,
             Status: b.Status?.ToString() ?? string.Empty,
             PaymentStatus: b.Payment?.PaymentStatus?.ToString(),

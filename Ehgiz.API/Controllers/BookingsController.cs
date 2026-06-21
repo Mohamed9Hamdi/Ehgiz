@@ -123,4 +123,31 @@ public class BookingsController : ControllerBase
             : "Return issue reported. Booking is now disputed.";
         return Ok(ApiResponse<object>.Success(null!, message));
     }
+
+    // ── Issue Reporting ─────────────────────────────────────────────────────
+
+    // POST api/bookings/{id}/report-issue
+    [HttpPost("{id:int}/report-issue")]
+    public async Task<IActionResult> ReportIssue(int id, [FromBody] ReportIssueRequest dto)
+    {
+        await _bookingService.ReportIssueAsync(id, CurrentUserId, dto);
+        return Ok(ApiResponse<object>.Success(null!, "Issue reported. Booking is now under dispute."));
+    }
+
+    // ── Calendar Availability ───────────────────────────────────────────────
+
+    // GET api/bookings/tool/{toolId}/availability?year=2026&month=6
+    [HttpGet("tool/{toolId:int}/availability")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetToolAvailability(int toolId, [FromQuery] int year, [FromQuery] int month)
+    {
+        if (year < 2020 || year > 2100)
+            return BadRequest(ApiResponse<object>.Fail("Invalid year."));
+
+        if (month < 1 || month > 12)
+            return BadRequest(ApiResponse<object>.Fail("Invalid month."));
+
+        var result = await _bookingService.GetToolAvailabilityAsync(toolId, year, month);
+        return Ok(ApiResponse<ToolAvailabilityDto>.Success(result));
+    }
 }

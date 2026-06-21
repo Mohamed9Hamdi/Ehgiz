@@ -21,3 +21,5 @@ public record PartialRefundRequest(
     string? ResolutionNotes);
 
 public record ResolveDisputeRequest(string? ResolutionNotes);
+
+public record UpdateIssueStatusRequest(string Status);

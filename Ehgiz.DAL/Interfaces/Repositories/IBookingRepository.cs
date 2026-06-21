@@ -20,4 +20,14 @@ public interface IBookingRepository : IRepository<Booking>
     /// Get a single booking with all related data for the detail view.
     /// </summary>
     Task<Booking?> GetBookingWithDetailsAsync(int bookingId);
+
+    /// <summary>
+    /// Get booked date ranges for a tool within a date range (for calendar view).
+    /// </summary>
+    Task<IReadOnlyList<Booking>> GetBookedDatesByToolIdAsync(int toolId, DateTime from, DateTime to);
+
+    /// <summary>
+    /// Get all disputed bookings with full details for admin.
+    /// </summary>
+    Task<IReadOnlyList<Booking>> GetDisputedBookingsAsync();
 }

@@ -33,6 +33,8 @@ public class UnitOfWork : IUnitOfWork
         _context = context;
         WalletTransactions = new Repository<WalletTransaction>(context);
         HandoverImages = new Repository<HandoverImage>(context);
+        PlatformRevenueLedgers = new Repository<PlatformRevenueLedger>(context);
+        SystemSettings = new Repository<SystemSetting>(context);
         Users = users;
         Categories = categories;
         Tools = tools;
@@ -86,6 +88,10 @@ public class UnitOfWork : IUnitOfWork
     public IHandoverRepository Handovers { get; }
 
     public IRepository<HandoverImage> HandoverImages { get; }
+
+    public IRepository<PlatformRevenueLedger> PlatformRevenueLedgers { get; }
+
+    public IRepository<SystemSetting> SystemSettings { get; }
 
     public Task<int> SaveChangesAsync() =>
         _context.SaveChangesAsync();

@@ -14,6 +14,18 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
 
         builder.Property(b => b.TotalPrice)
             .HasColumnType("decimal(18,2)");
+            
+        builder.Property(b => b.RentalCost)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(b => b.InsuranceAmount)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(b => b.PlatformFee)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(b => b.PricePerDay)
+            .HasColumnType("decimal(18,2)");
 
         builder.Property(b => b.Status)
             .HasConversion<string>()

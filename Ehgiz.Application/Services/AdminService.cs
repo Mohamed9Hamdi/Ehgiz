@@ -6,35 +6,32 @@ using Ehgiz.Application.Settings;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
-using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Hosting;
 
 namespace Ehgiz.Application.Services;
 
-public class AdminPaymentService : IAdminPaymentService
+public class AdminService : IAdminService
 {
     private readonly IUnitOfWork _uow;
-    private readonly PlatformSettings _platform;
+    private readonly string _handoverUploadPath;
 
-    public AdminPaymentService(IUnitOfWork uow, IOptions<PlatformSettings> platform)
+    public AdminService(IUnitOfWork uow, IWebHostEnvironment env)
     {
         _uow = uow;
-        _platform = platform.Value;
+        _handoverUploadPath = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "uploads", "handover");
     }
 
     // ── List Disputed Bookings ──────────────────────────────────────────────
     public async Task<IEnumerable<BookingDto>> GetDisputedBookingsAsync()
     {
-        var all = await _uow.Bookings.GetAllAsync();
-        return all
-            .Where(b => b.Status == BookingStatus.Disputed)
-            .Select(MapToDto)
-            .OrderByDescending(b => b.CreatedAt);
+        var disputed = await _uow.Bookings.GetDisputedBookingsAsync();
+        return disputed.Select(MapToDto);
     }
 
     // ── Get Dispute Details ─────────────────────────────────────────────────
     public async Task<DisputeDetailsDto> GetDisputeDetailsAsync(int bookingId)
     {
-        var booking = await _uow.Bookings.GetByIdAsync(bookingId)
+        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId)
             ?? throw new KeyNotFoundException($"Booking {bookingId} not found.");
 
         if (booking.Status != BookingStatus.Disputed)
@@ -69,16 +66,17 @@ public class AdminPaymentService : IAdminPaymentService
     // ── 1. Resolve in Favor of Owner ────────────────────────────────────────
     public async Task ResolveInFavorOfOwnerAsync(int bookingId, ResolveDisputeRequest dto)
     {
-        var booking = await _uow.Bookings.GetByIdAsync(bookingId)
+        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId)
             ?? throw new KeyNotFoundException($"Booking {bookingId} not found.");
 
         ValidateDisputed(booking);
 
-        var ownerWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.Tool.OwnerId);
+        await using var transaction = await _uow.BeginTransactionAsync();
 
+        var ownerWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.Tool.OwnerId);
         var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
 
-        // Owner gets full escrow (rental + insurance)
+        // Owner gets full escrow (rental + insurance) — covers damage/non-return cases
         ownerWallet.Balance += booking.TotalPrice;
         ownerWallet.UpdatedAt = DateTime.UtcNow;
 
@@ -96,18 +94,20 @@ public class AdminPaymentService : IAdminPaymentService
         });
 
         FinalizeDispute(booking, BookingStatus.Completed, dto.ResolutionNotes);
-        await NotifyBothPartiesAsync(booking, "resolved in favor of the owner");
         await CleanupHandoverImagesAsync(bookingId);
         await _uow.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     // ── 2. Resolve in Favor of Renter ───────────────────────────────────────
     public async Task ResolveInFavorOfRenterAsync(int bookingId, ResolveDisputeRequest dto)
     {
-        var booking = await _uow.Bookings.GetByIdAsync(bookingId)
+        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId)
             ?? throw new KeyNotFoundException($"Booking {bookingId} not found.");
 
         ValidateDisputed(booking);
+
+        await using var transaction = await _uow.BeginTransactionAsync();
 
         var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
 
@@ -133,9 +133,9 @@ public class AdminPaymentService : IAdminPaymentService
         }
 
         FinalizeDispute(booking, BookingStatus.Cancelled, dto.ResolutionNotes);
-        await NotifyBothPartiesAsync(booking, "resolved in favor of the renter");
         await CleanupHandoverImagesAsync(bookingId);
         await _uow.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     // ── 3. Partial Refund ───────────────────────────────────────────────────
@@ -144,16 +144,17 @@ public class AdminPaymentService : IAdminPaymentService
         if (dto.RefundPercentage < 1 || dto.RefundPercentage > 99)
             throw new InvalidOperationException("Refund percentage must be between 1 and 99.");
 
-        var booking = await _uow.Bookings.GetByIdAsync(bookingId)
+        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId)
             ?? throw new KeyNotFoundException($"Booking {bookingId} not found.");
 
         ValidateDisputed(booking);
+
+        await using var transaction = await _uow.BeginTransactionAsync();
 
         var refundAmount = Math.Round(booking.TotalPrice * (dto.RefundPercentage / 100m), 2);
         var ownerAmount = booking.TotalPrice - refundAmount;
 
         var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
-
         var ownerWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.Tool.OwnerId);
 
         // Partial refund to renter
@@ -191,25 +192,24 @@ public class AdminPaymentService : IAdminPaymentService
         }
 
         FinalizeDispute(booking, BookingStatus.Completed, dto.ResolutionNotes);
-        await NotifyBothPartiesAsync(booking, $"resolved with a {dto.RefundPercentage}% partial refund to the renter");
         await CleanupHandoverImagesAsync(bookingId);
         await _uow.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     // ── 4. Force Complete ───────────────────────────────────────────────────
     public async Task ForceCompleteAsync(int bookingId, ResolveDisputeRequest dto)
     {
-        var booking = await _uow.Bookings.GetByIdAsync(bookingId)
+        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId)
             ?? throw new KeyNotFoundException($"Booking {bookingId} not found.");
 
         ValidateDisputed(booking);
 
+        await using var transaction = await _uow.BeginTransactionAsync();
+
         // Normal settlement logic
-        var days = (int)(booking.EndDate.Date - booking.StartDate.Date).TotalDays;
-        var rentalCost = days * booking.Tool.PricePerDay;
-        var platformFee = Math.Round(rentalCost * (_platform.FeePercent / 100m), 2);
-        var ownerEarning = rentalCost - platformFee;
-        var insuranceAmount = booking.Tool.InsurancePrice;
+        var ownerEarning = booking.RentalCost - booking.PlatformFee;
+        var insuranceAmount = booking.InsuranceAmount;
 
         // Check for late return (from the return handover submission time)
         var lateFee = 0m;
@@ -219,7 +219,7 @@ public class AdminPaymentService : IAdminPaymentService
         if (returnHandover != null && returnHandover.SubmittedAt > booking.EndDate)
         {
             var lateHours = Math.Ceiling((decimal)(returnHandover.SubmittedAt - booking.EndDate).TotalHours);
-            var hourlyRate = booking.Tool.PricePerDay / 24m;
+            var hourlyRate = booking.PricePerDay / 24m;
             lateFee = Math.Min(lateHours * hourlyRate, insuranceAmount);
             lateFee = Math.Round(lateFee, 2);
         }
@@ -241,6 +241,17 @@ public class AdminPaymentService : IAdminPaymentService
             Description = $"Force-complete earnings for booking #{bookingId}",
             CreatedAt = DateTime.UtcNow
         });
+
+        // Record platform fee in ledger
+        if (booking.PlatformFee > 0)
+        {
+            await _uow.PlatformRevenueLedgers.AddAsync(new PlatformRevenueLedger
+            {
+                BookingId = booking.Id,
+                Amount = booking.PlatformFee,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
 
         if (lateFee > 0)
         {
@@ -283,21 +294,21 @@ public class AdminPaymentService : IAdminPaymentService
             booking.Payment.EscrowStatus = EscrowStatus.Released;
         }
 
-        booking.Tool.IsAvailable = true;
-
         FinalizeDispute(booking, BookingStatus.Completed, dto.ResolutionNotes);
-        await NotifyBothPartiesAsync(booking, "force-completed by admin with normal settlement");
         await CleanupHandoverImagesAsync(bookingId);
         await _uow.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     // ── 5. Force Cancel ─────────────────────────────────────────────────────
     public async Task ForceCancelAsync(int bookingId, ResolveDisputeRequest dto)
     {
-        var booking = await _uow.Bookings.GetByIdAsync(bookingId)
+        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId)
             ?? throw new KeyNotFoundException($"Booking {bookingId} not found.");
 
         ValidateDisputed(booking);
+
+        await using var transaction = await _uow.BeginTransactionAsync();
 
         // Full refund to renter
         var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
@@ -323,8 +334,82 @@ public class AdminPaymentService : IAdminPaymentService
         }
 
         FinalizeDispute(booking, BookingStatus.Cancelled, dto.ResolutionNotes);
-        await NotifyBothPartiesAsync(booking, "force-cancelled by admin with full refund");
         await CleanupHandoverImagesAsync(bookingId);
+        await _uow.SaveChangesAsync();
+        await transaction.CommitAsync();
+    }
+
+    // ── Issue Report Management ─────────────────────────────────────────────
+
+    public async Task<IEnumerable<IssueReportDto>> GetIssueReportsAsync()
+    {
+        var all = await _uow.IssueReports.GetAllAsync();
+        return all
+            .OrderByDescending(ir => ir.CreatedAt)
+            .Select(ir => new IssueReportDto(
+                Id: ir.Id,
+                ReporterName: ir.Reporter?.FullName ?? string.Empty,
+                Title: ir.Title,
+                Description: ir.Description,
+                Status: ir.Status?.ToString() ?? string.Empty,
+                CreatedAt: ir.CreatedAt));
+    }
+
+    public async Task<IssueReportDto> GetIssueReportByIdAsync(int id)
+    {
+        var ir = await _uow.IssueReports.GetByIdAsync(id)
+            ?? throw new KeyNotFoundException($"Issue report {id} not found.");
+
+        return new IssueReportDto(
+            Id: ir.Id,
+            ReporterName: ir.Reporter?.FullName ?? string.Empty,
+            Title: ir.Title,
+            Description: ir.Description,
+            Status: ir.Status?.ToString() ?? string.Empty,
+            CreatedAt: ir.CreatedAt);
+    }
+
+    public async Task UpdateIssueReportStatusAsync(int id, UpdateIssueStatusRequest dto)
+    {
+        var ir = await _uow.IssueReports.GetByIdAsync(id)
+            ?? throw new KeyNotFoundException($"Issue report {id} not found.");
+
+        if (!Enum.TryParse<IssueReportStatus>(dto.Status, ignoreCase: true, out var newStatus))
+            throw new InvalidOperationException(
+                $"Invalid status '{dto.Status}'. Valid values: {string.Join(", ", Enum.GetNames<IssueReportStatus>())}");
+
+        ir.Status = newStatus;
+        await _uow.SaveChangesAsync();
+    }
+
+    // ── Platform Settings ───────────────────────────────────────────────────
+
+    public async Task<decimal> GetPlatformFeeAsync()
+    {
+        var setting = await _uow.SystemSettings.GetByIdAsync("PlatformFeePercent");
+        if (setting != null && decimal.TryParse(setting.Value, out var fee))
+        {
+            return fee;
+        }
+        return 10m; // Default
+    }
+
+    public async Task UpdatePlatformFeeAsync(decimal feePercent)
+    {
+        if (feePercent < 0 || feePercent > 100)
+            throw new InvalidOperationException("Fee percentage must be between 0 and 100.");
+
+        var setting = await _uow.SystemSettings.GetByIdAsync("PlatformFeePercent");
+        if (setting == null)
+        {
+            setting = new SystemSetting { Key = "PlatformFeePercent", Value = feePercent.ToString() };
+            await _uow.SystemSettings.AddAsync(setting);
+        }
+        else
+        {
+            setting.Value = feePercent.ToString();
+        }
+
         await _uow.SaveChangesAsync();
     }
 
@@ -346,44 +431,27 @@ public class AdminPaymentService : IAdminPaymentService
             issue.Status = IssueReportStatus.Resolved;
     }
 
-    private async Task NotifyBothPartiesAsync(Booking booking, string resolution)
-    {
-        var toolName = booking.Tool?.Name ?? "the tool";
-
-        await _uow.Notifications.AddAsync(new Notification
-        {
-            UserId = booking.RenterId,
-            Type = NotificationType.DisputeResolved,
-            Content = $"Dispute for booking #{booking.Id} ('{toolName}') has been {resolution}.",
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        });
-
-        await _uow.Notifications.AddAsync(new Notification
-        {
-            UserId = booking.Tool!.OwnerId,
-            Type = NotificationType.DisputeResolved,
-            Content = $"Dispute for booking #{booking.Id} ('{toolName}') has been {resolution}.",
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        });
-    }
-
     private async Task CleanupHandoverImagesAsync(int bookingId)
     {
-        var allImages = await _uow.HandoverImages.GetAllAsync();
-        var images = allImages
-            .Where(hi => hi.Handover.BookingId == bookingId)
-            .ToList();
+        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId);
+        if (booking == null) return;
+
+        var images = booking.Handovers?.SelectMany(h => h.Images ?? new List<HandoverImage>()).ToList()
+                     ?? new List<HandoverImage>();
 
         foreach (var image in images)
             _uow.HandoverImages.Remove(image);
+
+        // Delete physical files
+        var folderPath = Path.Combine(_handoverUploadPath, bookingId.ToString());
+        if (Directory.Exists(folderPath))
+            Directory.Delete(folderPath, recursive: true);
     }
 
     private static BookingDto MapToDto(Booking b)
     {
         var days = (int)(b.EndDate.Date - b.StartDate.Date).TotalDays;
-        var rentalCost = b.Tool != null ? days * b.Tool.PricePerDay : 0;
+        var rentalCost = b.RentalCost;
 
         return new BookingDto(
             Id: b.Id,
@@ -400,7 +468,7 @@ public class AdminPaymentService : IAdminPaymentService
             EndDate: b.EndDate,
             Days: days,
             RentalCost: rentalCost,
-            InsurancePrice: b.Tool?.InsurancePrice ?? 0,
+            InsurancePrice: b.InsuranceAmount,
             TotalPrice: b.TotalPrice,
             Status: b.Status?.ToString() ?? string.Empty,
             PaymentStatus: b.Payment?.PaymentStatus?.ToString(),
