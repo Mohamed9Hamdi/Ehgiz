@@ -429,6 +429,12 @@ namespace Ehgiz.DAL.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("SenderId")
                         .HasColumnType("int");
 
@@ -454,9 +460,6 @@ namespace Ehgiz.DAL.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Content")
-                        .HasColumnType("text");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -465,9 +468,23 @@ namespace Ehgiz.DAL.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("Type")
+                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
@@ -659,6 +676,40 @@ namespace Ehgiz.DAL.Migrations
                     b.HasIndex("ToolId");
 
                     b.ToTable("ToolImages", (string)null);
+                });
+
+            modelBuilder.Entity("Ehgiz.DAL.Entities.UserConnection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("ConnectedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ConnectionId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsOnline")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConnectionId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserConnections", (string)null);
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Wallet", b =>
@@ -1061,6 +1112,17 @@ namespace Ehgiz.DAL.Migrations
                     b.Navigation("Tool");
                 });
 
+            modelBuilder.Entity("Ehgiz.DAL.Entities.UserConnection", b =>
+                {
+                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", "User")
+                        .WithMany("UserConnections")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Ehgiz.DAL.Entities.Wallet", b =>
                 {
                     b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", "User")
@@ -1153,6 +1215,8 @@ namespace Ehgiz.DAL.Migrations
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("SentMessages");
+
+                    b.Navigation("UserConnections");
 
                     b.Navigation("Wallet");
                 });

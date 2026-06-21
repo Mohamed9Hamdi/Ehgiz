@@ -3,8 +3,11 @@ using System.Text;
 using Ehgiz.API.Middleware;
 using Ehgiz.Application;
 using Ehgiz.Application.Common;
+using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Seed;
 using Ehgiz.Application.Settings;
+using Ehgiz.API.Hubs;
+using Ehgiz.API.Infrastructure;
 using Ehgiz.DAL;
 using Ehgiz.DAL.Data;
 using Ehgiz.DAL.Entities;
@@ -69,7 +72,8 @@ builder.Services.AddAuthentication(options =>
         OnMessageReceived = context =>
         {
             var accessToken = context.Request.Query["access_token"];
-            if (!string.IsNullOrEmpty(accessToken))
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
             {
                 context.Token = accessToken;
             }
@@ -104,6 +108,9 @@ builder.Services.AddCors(o => o.AddPolicy("Angular", p =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddDalServices();
 builder.Services.AddApplicationServices(builder.Configuration);
+builder.Services.AddSignalR();
+builder.Services.AddScoped<INotificationBroadcaster, NotificationBroadcaster>();
+builder.Services.AddScoped<IMessageBroadcaster, MessageBroadcaster>();
 
 // Enable raw body reading for Stripe webhook signature verification
 builder.Services.AddControllers();
@@ -155,12 +162,14 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ExceptionHandlingMiddleware>(); 
 app.UseStaticFiles();
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+
 app.UseCors("Angular");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NotificationHub>("/hubs/notifications");
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();

@@ -12,6 +12,7 @@ namespace Ehgiz.Application.Services;
 
 public class TokenService : ITokenService
 {
+    private static readonly JwtSecurityTokenHandler _tokenHandler = new();
     private readonly JwtSettings _jwtSettings;
 
     public TokenService(IOptions<JwtSettings> jwtSettings)
@@ -43,7 +44,7 @@ public class TokenService : ITokenService
             expires: expiresAt,
             signingCredentials: credentials);
 
-        return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
+        return (_tokenHandler.WriteToken(token), expiresAt);
     }
 
     public string GenerateRefreshToken()

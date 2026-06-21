@@ -1,7 +1,11 @@
+using Ehgiz.Application.Common;
 using Ehgiz.Application.DTOs.Review;
+using Ehgiz.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+
+namespace Ehgiz.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

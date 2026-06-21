@@ -26,6 +26,7 @@ public class ToolConfiguration : IEntityTypeConfiguration<Tool>
             .HasColumnType("decimal(18,2)");
 
         builder.Property(t => t.Condition)
+            .HasConversion<string>()
             .HasMaxLength(50);
 
         builder.Property(t => t.Location)

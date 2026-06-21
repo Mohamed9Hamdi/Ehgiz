@@ -1,4 +1,4 @@
-namespace Ehgiz.BLL.Common;
+namespace Ehgiz.Application.Common;
 
 public class PagedResult<T>
 {

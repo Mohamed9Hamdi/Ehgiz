@@ -1,7 +1,8 @@
 using Ehgiz.Application.DTOs.Tools;
-using Ehgiz.BLL.Common;
-using Ehgiz.DAL.Data;
+using Ehgiz.Application.Common;
 using Microsoft.AspNetCore.Http;
+
+namespace Ehgiz.Application.Interfaces;
 
 public interface IToolService
 {

@@ -1,21 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Ehgiz.DAL.Enums;
 
-namespace Ehgiz.Application.DTOs.Tools
+namespace Ehgiz.Application.DTOs.Tools;
+
+public class CreateToolDto
 {
-    public class CreateToolDto
-    {
-        public int CategoryId { get; set; }
-        public string Name { get; set; } = null!;
-        public string? Description { get; set; }
-        public decimal PricePerDay { get; set; }
-        public decimal InsurancePrice { get; set; }
-        public string? Condition { get; set; }
-        public string? Location { get; set; }
-        public bool IsAvailable { get; set; }
-
-    
-
-    }
+    public int CategoryId { get; set; }
+    public string Name { get; set; } = null!;
+    public string? Description { get; set; }
+    public decimal PricePerDay { get; set; }
+    public decimal InsurancePrice { get; set; }
+    public ToolCondition? Condition { get; set; }
+    public string? Location { get; set; }
 }

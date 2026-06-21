@@ -25,7 +25,10 @@ public class UnitOfWork : IUnitOfWork
         INotificationRepository notifications,
         IIssueReportRepository issueReports,
         IWalletRepository wallets,
-        IHandoverRepository handovers)
+        IHandoverRepository handovers,
+        IUserConnectionRepository userConnections,
+        IRefreshTokenRepository refreshTokens,
+        IEmailVerificationCodeRepository emailVerificationCodes)
     {
         _context = context;
         WalletTransactions = new Repository<WalletTransaction>(context);
@@ -41,6 +44,9 @@ public class UnitOfWork : IUnitOfWork
         Messages = messages;
         Notifications = notifications;
         IssueReports = issueReports;
+        UserConnections = userConnections;
+        RefreshTokens = refreshTokens;
+        EmailVerificationCodes = emailVerificationCodes;
         Wallets = wallets;
         Handovers = handovers;
     }
@@ -67,6 +73,12 @@ public class UnitOfWork : IUnitOfWork
 
     public IIssueReportRepository IssueReports { get; }
 
+    public IUserConnectionRepository UserConnections { get; }
+
+    public IRefreshTokenRepository RefreshTokens { get; }
+
+    public IEmailVerificationCodeRepository EmailVerificationCodes { get; }
+
     public IWalletRepository Wallets { get; }
 
     public IRepository<WalletTransaction> WalletTransactions { get; }
@@ -81,5 +93,5 @@ public class UnitOfWork : IUnitOfWork
     public Task<IDbContextTransaction> BeginTransactionAsync() =>
         _context.Database.BeginTransactionAsync();
 
-    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    public ValueTask DisposeAsync() => _context.DisposeAsync();
 }

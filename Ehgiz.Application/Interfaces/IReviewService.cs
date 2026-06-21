@@ -1,5 +1,7 @@
 using Ehgiz.Application.DTOs.Review;
 
+namespace Ehgiz.Application.Interfaces;
+
 public interface IReviewService
 {
 

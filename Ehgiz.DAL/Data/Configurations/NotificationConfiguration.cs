@@ -12,16 +12,25 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
 
         builder.HasKey(n => n.Id);
 
+        builder.Property(n => n.Title)
+            .IsRequired()
+            .HasMaxLength(200);
+
+        builder.Property(n => n.Message)
+            .IsRequired()
+            .HasColumnType("text");
+
         builder.Property(n => n.Type)
+            .IsRequired()
             .HasConversion<string>()
             .HasMaxLength(50);
-
-        builder.Property(n => n.Content)
-            .HasColumnType("text");
 
         builder.Property(n => n.IsRead)
             .IsRequired()
             .HasDefaultValue(false);
+
+        builder.Property(n => n.Url)
+            .HasMaxLength(500);
 
         builder.Property(n => n.CreatedAt)
             .IsRequired();

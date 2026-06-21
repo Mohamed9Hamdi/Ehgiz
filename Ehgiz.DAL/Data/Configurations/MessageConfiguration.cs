@@ -23,6 +23,10 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
         builder.Property(m => m.CreatedAt)
             .IsRequired();
 
+        builder.Property(m => m.DeliveredAt);
+
+        builder.Property(m => m.ReadAt);
+
         builder.HasOne(m => m.Conversation)
             .WithMany(c => c.Messages)
             .HasForeignKey(m => m.ConversationId)

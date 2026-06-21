@@ -1,3 +1,5 @@
+namespace Ehgiz.Application.DTOs.Tools;
+
 public class ToolDto
 {
     public int Id { get; set; }
@@ -10,14 +12,11 @@ public class ToolDto
     public bool IsAvailable { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    // من الـ Owner (ApplicationUser)
     public int OwnerId { get; set; }
     public string OwnerName { get; set; } = null!;
 
-    // من الـ Category
     public int CategoryId { get; set; }
     public string CategoryName { get; set; } = null!;
 
-    // صور الأداة
     public List<string> ImageUrls { get; set; } = [];
 }
