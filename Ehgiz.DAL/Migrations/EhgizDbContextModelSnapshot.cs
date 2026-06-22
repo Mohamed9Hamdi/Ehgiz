@@ -95,6 +95,14 @@ namespace Ehgiz.DAL.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("StripeAccountId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("StripeCustomerId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("bit");
 
@@ -123,11 +131,30 @@ namespace Ehgiz.DAL.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AdminResolutionNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<decimal>("InsuranceAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PlatformFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PricePerDay")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("RentalCost")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("RenterId")
                         .HasColumnType("int");
@@ -280,6 +307,86 @@ namespace Ehgiz.DAL.Migrations
                     b.ToTable("EmailVerificationCodes", (string)null);
                 });
 
+            modelBuilder.Entity("Ehgiz.DAL.Entities.Handover", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BookingId")
+                        .HasColumnType("int");
+
+                    b.Property<bool?>("IsAccepted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("RespondedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ResponderNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SubmittedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SubmitterNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.HasIndex("RespondedByUserId");
+
+                    b.HasIndex("SubmittedByUserId");
+
+                    b.ToTable("Handovers", (string)null);
+                });
+
+            modelBuilder.Entity("Ehgiz.DAL.Entities.HandoverImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Caption")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("HandoverId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HandoverId");
+
+                    b.ToTable("HandoverImages", (string)null);
+                });
+
             modelBuilder.Entity("Ehgiz.DAL.Entities.IssueReport", b =>
                 {
                     b.Property<int>("Id")
@@ -430,12 +537,40 @@ namespace Ehgiz.DAL.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("StripePaymentIntentId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BookingId")
                         .IsUnique();
 
                     b.ToTable("Payments", (string)null);
+                });
+
+            modelBuilder.Entity("Ehgiz.DAL.Entities.PlatformRevenueLedger", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("BookingId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.ToTable("PlatformRevenueLedgers", (string)null);
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.RefreshToken", b =>
@@ -498,6 +633,20 @@ namespace Ehgiz.DAL.Migrations
                     b.HasIndex("BookingId");
 
                     b.ToTable("Reviews", (string)null);
+                });
+
+            modelBuilder.Entity("Ehgiz.DAL.Entities.SystemSetting", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("SystemSettings");
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Tool", b =>
@@ -611,6 +760,75 @@ namespace Ehgiz.DAL.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("UserConnections", (string)null);
+                });
+
+            modelBuilder.Entity("Ehgiz.DAL.Entities.Wallet", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Balance")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("HeldBalance")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("Wallets", (string)null);
+                });
+
+            modelBuilder.Entity("Ehgiz.DAL.Entities.WalletTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WalletId");
+
+                    b.ToTable("WalletTransactions", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<int>", b =>
@@ -795,6 +1013,43 @@ namespace Ehgiz.DAL.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Ehgiz.DAL.Entities.Handover", b =>
+                {
+                    b.HasOne("Ehgiz.DAL.Entities.Booking", "Booking")
+                        .WithMany("Handovers")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", "RespondedByUser")
+                        .WithMany()
+                        .HasForeignKey("RespondedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", "SubmittedByUser")
+                        .WithMany()
+                        .HasForeignKey("SubmittedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("RespondedByUser");
+
+                    b.Navigation("SubmittedByUser");
+                });
+
+            modelBuilder.Entity("Ehgiz.DAL.Entities.HandoverImage", b =>
+                {
+                    b.HasOne("Ehgiz.DAL.Entities.Handover", "Handover")
+                        .WithMany("Images")
+                        .HasForeignKey("HandoverId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Handover");
+                });
+
             modelBuilder.Entity("Ehgiz.DAL.Entities.IssueReport", b =>
                 {
                     b.HasOne("Ehgiz.DAL.Entities.Booking", "Booking")
@@ -850,6 +1105,17 @@ namespace Ehgiz.DAL.Migrations
                         .WithOne("Payment")
                         .HasForeignKey("Ehgiz.DAL.Entities.Payment", "BookingId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+                });
+
+            modelBuilder.Entity("Ehgiz.DAL.Entities.PlatformRevenueLedger", b =>
+                {
+                    b.HasOne("Ehgiz.DAL.Entities.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Booking");
@@ -916,6 +1182,28 @@ namespace Ehgiz.DAL.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Ehgiz.DAL.Entities.Wallet", b =>
+                {
+                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", "User")
+                        .WithOne("Wallet")
+                        .HasForeignKey("Ehgiz.DAL.Entities.Wallet", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Ehgiz.DAL.Entities.WalletTransaction", b =>
+                {
+                    b.HasOne("Ehgiz.DAL.Entities.Wallet", "Wallet")
+                        .WithMany("Transactions")
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Wallet");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
@@ -990,10 +1278,14 @@ namespace Ehgiz.DAL.Migrations
                     b.Navigation("SentMessages");
 
                     b.Navigation("UserConnections");
+
+                    b.Navigation("Wallet");
                 });
 
             modelBuilder.Entity("Ehgiz.DAL.Entities.Booking", b =>
                 {
+                    b.Navigation("Handovers");
+
                     b.Navigation("IssueReports");
 
                     b.Navigation("Payment");
@@ -1011,11 +1303,21 @@ namespace Ehgiz.DAL.Migrations
                     b.Navigation("Messages");
                 });
 
+            modelBuilder.Entity("Ehgiz.DAL.Entities.Handover", b =>
+                {
+                    b.Navigation("Images");
+                });
+
             modelBuilder.Entity("Ehgiz.DAL.Entities.Tool", b =>
                 {
                     b.Navigation("Bookings");
 
                     b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("Ehgiz.DAL.Entities.Wallet", b =>
+                {
+                    b.Navigation("Transactions");
                 });
 #pragma warning restore 612, 618
         }

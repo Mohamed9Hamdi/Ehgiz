@@ -64,6 +64,13 @@ public class ReviewService : IReviewService
         if (booking.RenterId != renterId)
             throw new UnauthorizedAccessException("You can only review your own bookings");
 
+        // Allow reviews only for completed bookings or disputes resolved in renter's favor
+        var isCompleted = booking.Status == Ehgiz.DAL.Enums.BookingStatus.Completed;
+        var isDisputeResolvedForRenter = booking.Status == Ehgiz.DAL.Enums.BookingStatus.Cancelled
+                                         && !string.IsNullOrEmpty(booking.AdminResolutionNotes);
+        if (!isCompleted && !isDisputeResolvedForRenter)
+            throw new ValidationException("Reviews can only be left on completed or dispute-resolved bookings");
+
         var alreadyReviewed = await _context.Reviews
             .AnyAsync(r => r.BookingId == dto.BookingId);
 

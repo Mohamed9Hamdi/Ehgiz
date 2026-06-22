@@ -27,5 +27,11 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
         builder.Property(u => u.IsActive)
             .IsRequired()
             .HasDefaultValue(true);
+
+        builder.Property(u => u.StripeCustomerId)
+            .HasMaxLength(255);
+
+        builder.Property(u => u.StripeAccountId)
+            .HasMaxLength(255);
     }
 }

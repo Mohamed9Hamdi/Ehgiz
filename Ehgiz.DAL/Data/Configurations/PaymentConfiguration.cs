@@ -27,6 +27,9 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .HasConversion<string>()
             .HasMaxLength(50);
 
+        builder.Property(p => p.StripePaymentIntentId)
+            .HasMaxLength(255);
+
         builder.HasIndex(p => p.BookingId)
             .IsUnique();
 
