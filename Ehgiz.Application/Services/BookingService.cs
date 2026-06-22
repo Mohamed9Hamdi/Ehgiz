@@ -677,6 +677,7 @@ public class BookingService : IBookingService
             case BookingStatus.DeliveryHandover:
                 if (isOwner)
                 {
+                    actions.Add("ReportIssue");
                     actions.Add("MessageRenter");
                 }
                 else
