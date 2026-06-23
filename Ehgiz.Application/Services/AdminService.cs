@@ -1,8 +1,8 @@
 using Ehgiz.Application.DTOs.Admin;
 using Ehgiz.Application.DTOs.Bookings;
 using Ehgiz.Application.DTOs.Handovers;
+using Ehgiz.Application.DTOs.Notifications;
 using Ehgiz.Application.Interfaces;
-using Ehgiz.Application.Settings;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
@@ -13,11 +13,13 @@ namespace Ehgiz.Application.Services;
 public class AdminService : IAdminService
 {
     private readonly IUnitOfWork _uow;
+    private readonly INotificationService _notificationService;
     private readonly string _handoverUploadPath;
 
-    public AdminService(IUnitOfWork uow, IWebHostEnvironment env)
+    public AdminService(IUnitOfWork uow, IWebHostEnvironment env, INotificationService notificationService)
     {
         _uow = uow;
+        _notificationService = notificationService;
         _handoverUploadPath = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "uploads", "handover");
     }
 
@@ -97,6 +99,23 @@ public class AdminService : IAdminService
         await CleanupHandoverImagesAsync(bookingId);
         await _uow.SaveChangesAsync();
         await transaction.CommitAsync();
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.Tool.OwnerId,
+            Title = "Dispute Resolved in Your Favor",
+            Message = $"The dispute for booking #{bookingId} has been resolved in your favor. Funds have been transferred to your wallet.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.RenterId,
+            Title = "Dispute Resolved",
+            Message = $"The dispute for booking #{bookingId} has been resolved. The escrow funds were awarded to the owner.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
     }
 
     // ── 2. Resolve in Favor of Renter ───────────────────────────────────────
@@ -136,6 +155,23 @@ public class AdminService : IAdminService
         await CleanupHandoverImagesAsync(bookingId);
         await _uow.SaveChangesAsync();
         await transaction.CommitAsync();
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.RenterId,
+            Title = "Dispute Resolved in Your Favor",
+            Message = $"The dispute for booking #{bookingId} has been resolved in your favor. A full refund has been issued to your wallet.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.Tool.OwnerId,
+            Title = "Dispute Resolved",
+            Message = $"The dispute for booking #{bookingId} has been resolved. A refund was issued to the renter.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
     }
 
     // ── 3. Partial Refund ───────────────────────────────────────────────────
@@ -195,6 +231,23 @@ public class AdminService : IAdminService
         await CleanupHandoverImagesAsync(bookingId);
         await _uow.SaveChangesAsync();
         await transaction.CommitAsync();
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.RenterId,
+            Title = "Dispute Resolved – Partial Refund",
+            Message = $"The dispute for booking #{bookingId} was resolved. You received a {dto.RefundPercentage}% refund.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.Tool.OwnerId,
+            Title = "Dispute Resolved – Partial Payout",
+            Message = $"The dispute for booking #{bookingId} was resolved. You received {100 - dto.RefundPercentage}% of the escrow amount.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
     }
 
     // ── 4. Force Complete ───────────────────────────────────────────────────
@@ -298,6 +351,23 @@ public class AdminService : IAdminService
         await CleanupHandoverImagesAsync(bookingId);
         await _uow.SaveChangesAsync();
         await transaction.CommitAsync();
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.RenterId,
+            Title = "Booking Force-Completed",
+            Message = $"Admin has force-completed booking #{bookingId}. Any applicable insurance refund has been credited to your wallet.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.Tool.OwnerId,
+            Title = "Booking Force-Completed – Earnings Credited",
+            Message = $"Admin has force-completed booking #{bookingId}. Your earnings have been credited to your wallet.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
     }
 
     // ── 5. Force Cancel ─────────────────────────────────────────────────────
@@ -337,6 +407,23 @@ public class AdminService : IAdminService
         await CleanupHandoverImagesAsync(bookingId);
         await _uow.SaveChangesAsync();
         await transaction.CommitAsync();
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.RenterId,
+            Title = "Booking Force-Cancelled – Full Refund",
+            Message = $"Admin has force-cancelled booking #{bookingId}. A full refund has been issued to your wallet.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.Tool.OwnerId,
+            Title = "Booking Force-Cancelled",
+            Message = $"Admin has force-cancelled booking #{bookingId}. The escrow funds were refunded to the renter.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
     }
 
     // ── Issue Report Management ─────────────────────────────────────────────
@@ -380,6 +467,15 @@ public class AdminService : IAdminService
 
         ir.Status = newStatus;
         await _uow.SaveChangesAsync();
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = ir.ReporterId,
+            Title = "Issue Report Updated",
+            Message = $"Your issue report '{ir.Title}' status has been updated to: {newStatus}.",
+            Type = NotificationType.IssueReport,
+            Url = $"/bookings/{ir.BookingId}"
+        });
     }
 
     // ── Platform Settings ───────────────────────────────────────────────────

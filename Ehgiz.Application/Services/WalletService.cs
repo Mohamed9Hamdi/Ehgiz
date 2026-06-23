@@ -1,3 +1,4 @@
+using Ehgiz.Application.DTOs.Notifications;
 using Ehgiz.Application.DTOs.Wallet;
 using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Entities;
@@ -11,15 +12,18 @@ public class WalletService : IWalletService
 {
     private readonly IUnitOfWork _uow;
     private readonly IStripeService _stripe;
+    private readonly INotificationService _notificationService;
     private readonly UserManager<ApplicationUser> _userManager;
 
     public WalletService(
         IUnitOfWork uow,
         IStripeService stripe,
+        INotificationService notificationService,
         UserManager<ApplicationUser> userManager)
     {
         _uow = uow;
         _stripe = stripe;
+        _notificationService = notificationService;
         _userManager = userManager;
     }
 
@@ -81,6 +85,15 @@ public class WalletService : IWalletService
         });
 
         await _uow.SaveChangesAsync();
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = userId,
+            Title = "Wallet Topped Up",
+            Message = $"Your wallet has been credited with {amount:C}. New balance available for bookings.",
+            Type = NotificationType.Payment,
+            Url = "/wallet"
+        });
     }
 
     public async Task<IEnumerable<WalletTransactionDto>> GetTransactionHistoryAsync(int userId)
@@ -155,6 +168,14 @@ public class WalletService : IWalletService
         });
 
         await _uow.SaveChangesAsync();
-    }
 
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = userId,
+            Title = "Withdrawal Processed",
+            Message = $"Your withdrawal of {request.Amount:C} has been processed successfully.",
+            Type = NotificationType.Payment,
+            Url = "/wallet"
+        });
+    }
 }

@@ -1,7 +1,9 @@
+using Ehgiz.Application.DTOs.Notifications;
 using Ehgiz.Application.DTOs.Review;
 using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Data;
 using Ehgiz.DAL.Entities;
+using Ehgiz.DAL.Enums;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
@@ -11,8 +13,13 @@ namespace Ehgiz.Application.Services;
 public class ReviewService : IReviewService
 {
     private readonly EhgizDbContext _context;
+    private readonly INotificationService _notificationService;
 
-    public ReviewService(EhgizDbContext context) => _context = context;
+    public ReviewService(EhgizDbContext context, INotificationService notificationService)
+    {
+        _context = context;
+        _notificationService = notificationService;
+    }
 
     public async Task<List<ReviewDto>> GetByToolAsync(int toolId)
     {
@@ -56,6 +63,7 @@ public class ReviewService : IReviewService
             throw new ValidationException("Rating must be between 1 and 5");
 
         var booking = await _context.Bookings
+            .Include(b => b.Tool)
             .FirstOrDefaultAsync(b => b.Id == dto.BookingId);
 
         if (booking == null)
@@ -65,8 +73,8 @@ public class ReviewService : IReviewService
             throw new UnauthorizedAccessException("You can only review your own bookings");
 
         // Allow reviews only for completed bookings or disputes resolved in renter's favor
-        var isCompleted = booking.Status == Ehgiz.DAL.Enums.BookingStatus.Completed;
-        var isDisputeResolvedForRenter = booking.Status == Ehgiz.DAL.Enums.BookingStatus.Cancelled
+        var isCompleted = booking.Status == BookingStatus.Completed;
+        var isDisputeResolvedForRenter = booking.Status == BookingStatus.Cancelled
                                          && !string.IsNullOrEmpty(booking.AdminResolutionNotes);
         if (!isCompleted && !isDisputeResolvedForRenter)
             throw new ValidationException("Reviews can only be left on completed or dispute-resolved bookings");
@@ -81,6 +89,15 @@ public class ReviewService : IReviewService
 
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.Tool.OwnerId,
+            Title = "New Review Received",
+            Message = $"Someone left a {dto.Rating}-star review on '{booking.Tool.Name}'.",
+            Type = NotificationType.Review,
+            Url = $"/tools/{booking.ToolId}"
+        });
 
         return await GetByIdAsync(review.Id);
     }

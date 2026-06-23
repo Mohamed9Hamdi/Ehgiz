@@ -1,23 +1,24 @@
 using Ehgiz.Application.DTOs.Bookings;
 using Ehgiz.Application.DTOs.Handovers;
+using Ehgiz.Application.DTOs.Notifications;
 using Ehgiz.Application.Interfaces;
-using Ehgiz.Application.Settings;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Options;
 
 namespace Ehgiz.Application.Services;
 
 public class BookingService : IBookingService
 {
     private readonly IUnitOfWork _uow;
+    private readonly INotificationService _notificationService;
     private readonly string _handoverUploadPath;
 
-    public BookingService(IUnitOfWork uow, IWebHostEnvironment env)
+    public BookingService(IUnitOfWork uow, IWebHostEnvironment env, INotificationService notificationService)
     {
         _uow = uow;
+        _notificationService = notificationService;
         _handoverUploadPath = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "uploads", "handover");
     }
 
@@ -94,6 +95,15 @@ public class BookingService : IBookingService
         await _uow.SaveChangesAsync();
         await transaction.CommitAsync();
 
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = tool.OwnerId,
+            Title = "New Booking Request",
+            Message = $"You have a new booking request for '{tool.Name}' ({days} day{(days == 1 ? "" : "s")}, {dto.StartDate:MMM d} – {dto.EndDate:MMM d}).",
+            Type = NotificationType.Booking,
+            Url = $"/bookings/{booking.Id}"
+        });
+
         return new CreateBookingResponse(
             BookingId: booking.Id,
             RentalCost: rentalCost,
@@ -116,17 +126,16 @@ public class BookingService : IBookingService
             throw new InvalidOperationException("Only pending bookings can be accepted.");
 
         booking.Status = BookingStatus.Accepted;
-
-        //await _uow.Notifications.AddAsync(new Notification
-        //{
-        //    UserId = booking.RenterId,
-        //    Type = NotificationType.BookingUpdate,
-        //    Content = $"Your booking for '{booking.Tool.Name}' has been accepted by the owner.",
-        //    IsRead = false,
-        //    CreatedAt = DateTime.UtcNow
-        //});
-
         await _uow.SaveChangesAsync();
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.RenterId,
+            Title = "Booking Accepted",
+            Message = $"Your booking for '{booking.Tool.Name}' has been accepted by the owner.",
+            Type = NotificationType.Booking,
+            Url = $"/bookings/{bookingId}"
+        });
     }
 
     // ── Reject Booking (Owner) ──────────────────────────────────────────────
@@ -157,6 +166,15 @@ public class BookingService : IBookingService
 
         await _uow.SaveChangesAsync();
         await transaction.CommitAsync();
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.RenterId,
+            Title = "Booking Rejected",
+            Message = $"Your booking for '{booking.Tool.Name}' was rejected by the owner. Your payment has been refunded.",
+            Type = NotificationType.Booking,
+            Url = $"/bookings/{bookingId}"
+        });
     }
 
     // ── Cancel Booking ──────────────────────────────────────────────────────
@@ -187,6 +205,20 @@ public class BookingService : IBookingService
 
         await _uow.SaveChangesAsync();
         await transaction.CommitAsync();
+
+        var notifyUserId = booking.RenterId == requestingUserId
+            ? booking.Tool.OwnerId
+            : booking.RenterId;
+        var cancelledBy = booking.RenterId == requestingUserId ? "renter" : "owner";
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = notifyUserId,
+            Title = "Booking Cancelled",
+            Message = $"The booking for '{booking.Tool.Name}' has been cancelled by the {cancelledBy}.",
+            Type = NotificationType.Booking,
+            Url = $"/bookings/{bookingId}"
+        });
     }
 
     // ── Submit Delivery Handover (Owner) ────────────────────────────────────
@@ -216,16 +248,16 @@ public class BookingService : IBookingService
         // Save handover images
         await SaveHandoverImagesAsync(handover, dto);
 
-        //await _uow.Notifications.AddAsync(new Notification
-        //{
-        //    UserId = booking.RenterId,
-        //    Type = NotificationType.HandoverPending,
-        //    Content = $"The owner has submitted a delivery for '{booking.Tool.Name}'. Please inspect and confirm.",
-        //    IsRead = false,
-        //    CreatedAt = DateTime.UtcNow
-        //});
-
         await _uow.SaveChangesAsync();
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.RenterId,
+            Title = "Delivery Handover Submitted",
+            Message = $"The owner has submitted a delivery handover for '{booking.Tool.Name}'. Please review and confirm.",
+            Type = NotificationType.HandoverPending,
+            Url = $"/bookings/{bookingId}"
+        });
     }
 
     // ── Respond to Delivery Handover (Renter) ───────────────────────────────
@@ -251,15 +283,6 @@ public class BookingService : IBookingService
         if (dto.Accept)
         {
             booking.Status = BookingStatus.Active;
-
-            //await _uow.Notifications.AddAsync(new Notification
-            //{
-            //    UserId = booking.Tool.OwnerId,
-            //    Type = NotificationType.HandoverAccepted,
-            //    Content = $"The renter has accepted the delivery of '{booking.Tool.Name}'. Rental is now active.",
-            //    IsRead = false,
-            //    CreatedAt = DateTime.UtcNow
-            //});
         }
         else
         {
@@ -275,18 +298,32 @@ public class BookingService : IBookingService
                 Status = IssueReportStatus.Open,
                 CreatedAt = DateTime.UtcNow
             });
-
-            //await _uow.Notifications.AddAsync(new Notification
-            //{
-            //    UserId = booking.Tool.OwnerId,
-            //    Type = NotificationType.HandoverDisputed,
-            //    Content = $"The renter has reported an issue with the delivery of '{booking.Tool.Name}'.",
-            //    IsRead = false,
-            //    CreatedAt = DateTime.UtcNow
-            //});
         }
 
         await _uow.SaveChangesAsync();
+
+        if (dto.Accept)
+        {
+            await _notificationService.CreateAsync(new CreateNotificationDto
+            {
+                UserId = booking.Tool.OwnerId,
+                Title = "Delivery Accepted",
+                Message = $"The renter accepted the delivery of '{booking.Tool.Name}'. The rental is now active.",
+                Type = NotificationType.HandoverAccepted,
+                Url = $"/bookings/{bookingId}"
+            });
+        }
+        else
+        {
+            await _notificationService.CreateAsync(new CreateNotificationDto
+            {
+                UserId = booking.Tool.OwnerId,
+                Title = "Delivery Disputed",
+                Message = $"The renter has reported an issue with the delivery of '{booking.Tool.Name}'.",
+                Type = NotificationType.HandoverDisputed,
+                Url = $"/bookings/{bookingId}"
+            });
+        }
     }
 
     // ── Submit Return Handover (Renter) ─────────────────────────────────────
@@ -316,16 +353,16 @@ public class BookingService : IBookingService
         // Save handover images
         await SaveHandoverImagesAsync(handover, dto);
 
-        //await _uow.Notifications.AddAsync(new Notification
-        //{
-        //    UserId = booking.Tool.OwnerId,
-        //    Type = NotificationType.HandoverPending,
-        //    Content = $"The renter has submitted a return for '{booking.Tool.Name}'. Please inspect and confirm.",
-        //    IsRead = false,
-        //    CreatedAt = DateTime.UtcNow
-        //});
-
         await _uow.SaveChangesAsync();
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = booking.Tool.OwnerId,
+            Title = "Return Handover Submitted",
+            Message = $"The renter has submitted a return handover for '{booking.Tool.Name}'. Please review and confirm.",
+            Type = NotificationType.HandoverPending,
+            Url = $"/bookings/{bookingId}"
+        });
     }
 
     // ── Respond to Return Handover (Owner) ──────────────────────────────────
@@ -354,6 +391,23 @@ public class BookingService : IBookingService
             await SettleBookingAsync(booking, handover);
             await _uow.SaveChangesAsync();
             await transaction.CommitAsync();
+
+            await _notificationService.CreateAsync(new CreateNotificationDto
+            {
+                UserId = booking.RenterId,
+                Title = "Booking Completed",
+                Message = $"Your return of '{booking.Tool.Name}' was accepted. Booking #{bookingId} is now complete.",
+                Type = NotificationType.Booking,
+                Url = $"/bookings/{bookingId}"
+            });
+            await _notificationService.CreateAsync(new CreateNotificationDto
+            {
+                UserId = booking.Tool.OwnerId,
+                Title = "Return Accepted – Earnings Credited",
+                Message = $"Return confirmed for '{booking.Tool.Name}'. Your earnings have been credited to your wallet.",
+                Type = NotificationType.Payment,
+                Url = $"/bookings/{bookingId}"
+            });
         }
         else
         {
@@ -371,6 +425,15 @@ public class BookingService : IBookingService
             });
 
             await _uow.SaveChangesAsync();
+
+            await _notificationService.CreateAsync(new CreateNotificationDto
+            {
+                UserId = booking.RenterId,
+                Title = "Return Disputed",
+                Message = $"The owner has reported an issue with the return of '{booking.Tool.Name}'.",
+                Type = NotificationType.HandoverDisputed,
+                Url = $"/bookings/{bookingId}"
+            });
         }
     }
 
@@ -429,6 +492,19 @@ public class BookingService : IBookingService
             booking.Status = BookingStatus.Disputed;
 
         await _uow.SaveChangesAsync();
+
+        var otherPartyId = booking.RenterId == userId
+            ? booking.Tool.OwnerId
+            : booking.RenterId;
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = otherPartyId,
+            Title = "Issue Reported on Your Booking",
+            Message = $"An issue has been reported on the booking for '{booking.Tool.Name}': {dto.Title}",
+            Type = NotificationType.IssueReport,
+            Url = $"/bookings/{bookingId}"
+        });
     }
 
     // ── Tool Availability (Calendar) ────────────────────────────────────────
@@ -459,10 +535,6 @@ public class BookingService : IBookingService
 
     // ── Private Helpers ─────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Full financial settlement when return is accepted.
-    /// Calculates late fee (if any), credits owner, refunds insurance.
-    /// </summary>
     private async Task SettleBookingAsync(Booking booking, Handover returnHandover)
     {
         var ownerEarning = booking.RentalCost - booking.PlatformFee;
@@ -558,9 +630,6 @@ public class BookingService : IBookingService
         await CleanupHandoverImagesAsync(booking.Id);
     }
 
-    /// <summary>
-    /// Full refund to renter wallet from held balance.
-    /// </summary>
     private async Task RefundRenterAsync(Booking booking)
     {
         var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
@@ -580,10 +649,6 @@ public class BookingService : IBookingService
         });
     }
 
-    /// <summary>
-    /// Save uploaded handover images to disk and create DB records.
-    /// Files are saved to wwwroot/uploads/handover/{bookingId}/{unique_filename}.
-    /// </summary>
     private async Task SaveHandoverImagesAsync(Handover handover, SubmitHandoverRequest dto)
     {
         if (dto.Images == null || dto.Images.Count == 0)
@@ -615,9 +680,6 @@ public class BookingService : IBookingService
         }
     }
 
-    /// <summary>
-    /// Delete all handover images for a booking (DB records + physical files).
-    /// </summary>
     private async Task CleanupHandoverImagesAsync(int bookingId)
     {
         var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId);
@@ -637,9 +699,6 @@ public class BookingService : IBookingService
 
     // ── Allowed Actions ─────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Compute the list of actions the current user is allowed to perform on this booking.
-    /// </summary>
     private static IReadOnlyList<string> ComputeAllowedActions(Booking b, int userId, bool isOwner)
     {
         var actions = new List<string>();
@@ -752,7 +811,6 @@ public class BookingService : IBookingService
     {
         var days = (int)(b.EndDate.Date - b.StartDate.Date).TotalDays;
 
-        // Determine the "other party" based on perspective
         int otherPartyId;
         string otherPartyName;
         string? otherPartyImageUrl;
@@ -770,7 +828,6 @@ public class BookingService : IBookingService
             otherPartyImageUrl = b.Tool?.Owner?.ProfileImageUrl;
         }
 
-        // Build handover summaries
         var deliveryHandover = b.Handovers?
             .Where(h => h.Type == HandoverType.Delivery)
             .OrderByDescending(h => h.SubmittedAt)
