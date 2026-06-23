@@ -8,6 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="uploads\**" />
+    <Content Remove="uploads\**" />
+    <EmbeddedResource Remove="uploads\**" />
+    <None Remove="uploads\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.9" />
@@ -21,10 +28,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Ehgiz.Application\Ehgiz.Application.csproj" />
     <ProjectReference Include="..\Ehgiz.DAL\Ehgiz.DAL.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="uploads\tools\" />
   </ItemGroup>
 
 </Project>
