@@ -115,21 +115,15 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> GetPlatformFee()
     {
         var fee = await _adminService.GetPlatformFeeAsync();
-        return Ok(new { FeePercent = fee });
+        return Ok(ApiResponse<object>.Success(new { feePercent = fee }));
     }
 
     // PUT api/admin/settings/platform-fee
     [HttpPut("settings/platform-fee")]
     public async Task<IActionResult> UpdatePlatformFee([FromBody] UpdatePlatformFeeRequest request)
     {
-        try
-        {
-            await _adminService.UpdatePlatformFeeAsync(request.FeePercent);
-            return Ok(new { Message = "Platform fee updated successfully.", FeePercent = request.FeePercent });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { Message = ex.Message });
-        }
+        await _adminService.UpdatePlatformFeeAsync(request.FeePercent);
+        return Ok(ApiResponse<object>.Success(new { feePercent = request.FeePercent },
+            "Platform fee updated successfully."));
     }
 }

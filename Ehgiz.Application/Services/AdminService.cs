@@ -430,21 +430,19 @@ public class AdminService : IAdminService
 
     public async Task<IEnumerable<IssueReportDto>> GetIssueReportsAsync()
     {
-        var all = await _uow.IssueReports.GetAllAsync();
-        return all
-            .OrderByDescending(ir => ir.CreatedAt)
-            .Select(ir => new IssueReportDto(
-                Id: ir.Id,
-                ReporterName: ir.Reporter?.FullName ?? string.Empty,
-                Title: ir.Title,
-                Description: ir.Description,
-                Status: ir.Status?.ToString() ?? string.Empty,
-                CreatedAt: ir.CreatedAt));
+        var all = await _uow.IssueReports.GetAllWithDetailsAsync();
+        return all.Select(ir => new IssueReportDto(
+            Id: ir.Id,
+            ReporterName: ir.Reporter?.FullName ?? string.Empty,
+            Title: ir.Title,
+            Description: ir.Description,
+            Status: ir.Status?.ToString() ?? string.Empty,
+            CreatedAt: ir.CreatedAt));
     }
 
     public async Task<IssueReportDto> GetIssueReportByIdAsync(int id)
     {
-        var ir = await _uow.IssueReports.GetByIdAsync(id)
+        var ir = await _uow.IssueReports.GetByIdWithDetailsAsync(id)
             ?? throw new KeyNotFoundException($"Issue report {id} not found.");
 
         return new IssueReportDto(
@@ -458,7 +456,7 @@ public class AdminService : IAdminService
 
     public async Task UpdateIssueReportStatusAsync(int id, UpdateIssueStatusRequest dto)
     {
-        var ir = await _uow.IssueReports.GetByIdAsync(id)
+        var ir = await _uow.IssueReports.GetByIdWithDetailsAsync(id)
             ?? throw new KeyNotFoundException($"Issue report {id} not found.");
 
         if (!Enum.TryParse<IssueReportStatus>(dto.Status, ignoreCase: true, out var newStatus))
