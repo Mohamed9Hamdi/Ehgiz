@@ -28,7 +28,8 @@ public class UnitOfWork : IUnitOfWork
         IHandoverRepository handovers,
         IUserConnectionRepository userConnections,
         IRefreshTokenRepository refreshTokens,
-        IEmailVerificationCodeRepository emailVerificationCodes)
+        IEmailVerificationCodeRepository emailVerificationCodes,
+        IPasswordResetCodeRepository passwordResetCodes)
     {
         _context = context;
         WalletTransactions = new Repository<WalletTransaction>(context);
@@ -49,6 +50,7 @@ public class UnitOfWork : IUnitOfWork
         UserConnections = userConnections;
         RefreshTokens = refreshTokens;
         EmailVerificationCodes = emailVerificationCodes;
+        PasswordResetCodes = passwordResetCodes;
         Wallets = wallets;
         Handovers = handovers;
     }
@@ -92,6 +94,8 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<PlatformRevenueLedger> PlatformRevenueLedgers { get; }
 
     public IRepository<SystemSetting> SystemSettings { get; }
+
+    public IPasswordResetCodeRepository PasswordResetCodes { get; }
 
     public Task<int> SaveChangesAsync() =>
         _context.SaveChangesAsync();

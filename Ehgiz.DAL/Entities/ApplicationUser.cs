@@ -24,4 +24,5 @@ public class ApplicationUser : IdentityUser<int>
     public ICollection<UserConnection> UserConnections { get; set; } = [];
     public Wallet? Wallet { get; set; }
     public ICollection<EmailVerificationCode> EmailVerificationCodes { get; set; } = [];
+    public ICollection<PasswordResetCode> PasswordResetCodes { get; set; } = [];
 }

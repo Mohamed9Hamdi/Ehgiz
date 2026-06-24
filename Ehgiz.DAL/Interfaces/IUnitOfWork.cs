@@ -19,6 +19,8 @@ public interface IUnitOfWork : IAsyncDisposable
     IUserConnectionRepository UserConnections { get; }
     IRefreshTokenRepository RefreshTokens { get; }
     IEmailVerificationCodeRepository EmailVerificationCodes { get; }
+    IPasswordResetCodeRepository PasswordResetCodes { get; }
+
     IWalletRepository Wallets { get; }
     IRepository<Ehgiz.DAL.Entities.WalletTransaction> WalletTransactions { get; }
     IHandoverRepository Handovers { get; }

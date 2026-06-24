@@ -31,4 +31,21 @@ public class SendGridEmailService : IEmailService
             throw new InvalidOperationException($"SendGrid failed ({response.StatusCode}): {body}");
         }
     }
+
+    public async Task SendPasswordResetCodeAsync(string toEmail, string code)
+    {
+        var client = new SendGridClient(_settings.ApiKey);
+        var from = new EmailAddress(_settings.SenderEmail, "Ehgiz");
+        var to = new EmailAddress(toEmail);
+        var subject = "Reset your Ehgiz password";
+        var plainText = $"Your password reset code is: {code}\n\nThis code expires in {_settings.VerificationCodeMins} minutes.";
+        var msg = MailHelper.CreateSingleEmail(from, to, subject, plainText, null);
+
+        var response = await client.SendEmailAsync(msg);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Body.ReadAsStringAsync();
+            throw new InvalidOperationException($"SendGrid failed ({response.StatusCode}): {body}");
+        }
+    }
 }
