@@ -41,6 +41,7 @@ public class ExceptionHandlingMiddleware
                 statusCode = StatusCodes.Status403Forbidden;
                 message = ex.Message;
                 break;
+            case InvalidOperationException:
             case ValidationException:
                 statusCode = StatusCodes.Status400BadRequest;
                 message = ex.Message;

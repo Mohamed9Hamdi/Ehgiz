@@ -10,6 +10,8 @@ public class ApplicationUser : IdentityUser<int>
     public string? City { get; set; }
     public DateTime CreatedAt { get; set; }
     public bool IsActive { get; set; }
+    public string? StripeCustomerId { get; set; }
+    public string? StripeAccountId { get; set; }
 
     public ICollection<Tool> OwnedTools { get; set; } = [];
     public ICollection<Booking> Bookings { get; set; } = [];
@@ -20,6 +22,7 @@ public class ApplicationUser : IdentityUser<int>
     public ICollection<IssueReport> IssueReports { get; set; } = [];
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<UserConnection> UserConnections { get; set; } = [];
+    public Wallet? Wallet { get; set; }
     public ICollection<EmailVerificationCode> EmailVerificationCodes { get; set; } = [];
     public ICollection<PasswordResetCode> PasswordResetCodes { get; set; } = [];
 }

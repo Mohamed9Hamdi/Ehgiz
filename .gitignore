@@ -17,7 +17,9 @@
 
 # Mono auto generated files
 mono_crash.*
-
+# .gitignore
+.env
+*.env
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
@@ -225,7 +227,8 @@ rcf/
 # .gitignore
 .env
 *.env
-
+wwwroot/
+uploads/
 # Windows Store app package directories and files
 AppPackages/
 BundleArtifacts/

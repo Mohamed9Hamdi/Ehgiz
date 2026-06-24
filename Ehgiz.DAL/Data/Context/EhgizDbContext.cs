@@ -24,9 +24,15 @@ public class EhgizDbContext : IdentityDbContext<ApplicationUser, IdentityRole<in
     public DbSet<IssueReport> IssueReports => Set<IssueReport>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<UserConnection> UserConnections => Set<UserConnection>();
+    public DbSet<Wallet> Wallets => Set<Wallet>();
+    public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
+    public DbSet<Handover> Handovers => Set<Handover>();
+    public DbSet<HandoverImage> HandoverImages => Set<HandoverImage>();
     public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
     public DbSet<PasswordResetCode> PasswordResetCodes => Set<PasswordResetCode>();
 
+    public DbSet<PlatformRevenueLedger> PlatformRevenueLedgers => Set<PlatformRevenueLedger>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

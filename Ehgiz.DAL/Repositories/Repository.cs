@@ -7,7 +7,7 @@ namespace Ehgiz.DAL.Repositories;
 
 public class Repository<T> : IRepository<T> where T : class
 {
-    private readonly EhgizDbContext _context;
+    protected readonly EhgizDbContext _context;
     private readonly DbSet<T> _dbSet;
 
     public Repository(EhgizDbContext context)

@@ -1,6 +1,8 @@
 using Ehgiz.DAL.Data;
+using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Interfaces;
 using Ehgiz.DAL.Interfaces.Repositories;
+using Ehgiz.DAL.Repositories;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Ehgiz.DAL.UnitOfWork;
@@ -22,12 +24,18 @@ public class UnitOfWork : IUnitOfWork
         IMessageRepository messages,
         INotificationRepository notifications,
         IIssueReportRepository issueReports,
+        IWalletRepository wallets,
+        IHandoverRepository handovers,
         IUserConnectionRepository userConnections,
         IRefreshTokenRepository refreshTokens,
         IEmailVerificationCodeRepository emailVerificationCodes,
         IPasswordResetCodeRepository passwordResetCodes)
     {
         _context = context;
+        WalletTransactions = new Repository<WalletTransaction>(context);
+        HandoverImages = new Repository<HandoverImage>(context);
+        PlatformRevenueLedgers = new Repository<PlatformRevenueLedger>(context);
+        SystemSettings = new Repository<SystemSetting>(context);
         Users = users;
         Categories = categories;
         Tools = tools;
@@ -43,6 +51,8 @@ public class UnitOfWork : IUnitOfWork
         RefreshTokens = refreshTokens;
         EmailVerificationCodes = emailVerificationCodes;
         PasswordResetCodes = passwordResetCodes;
+        Wallets = wallets;
+        Handovers = handovers;
     }
 
     public IUserRepository Users { get; }
@@ -72,6 +82,18 @@ public class UnitOfWork : IUnitOfWork
     public IRefreshTokenRepository RefreshTokens { get; }
 
     public IEmailVerificationCodeRepository EmailVerificationCodes { get; }
+
+    public IWalletRepository Wallets { get; }
+
+    public IRepository<WalletTransaction> WalletTransactions { get; }
+
+    public IHandoverRepository Handovers { get; }
+
+    public IRepository<HandoverImage> HandoverImages { get; }
+
+    public IRepository<PlatformRevenueLedger> PlatformRevenueLedgers { get; }
+
+    public IRepository<SystemSetting> SystemSettings { get; }
 
     public IPasswordResetCodeRepository PasswordResetCodes { get; }
 

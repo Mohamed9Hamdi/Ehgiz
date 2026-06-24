@@ -21,6 +21,12 @@ public interface IUnitOfWork : IAsyncDisposable
     IEmailVerificationCodeRepository EmailVerificationCodes { get; }
     IPasswordResetCodeRepository PasswordResetCodes { get; }
 
+    IWalletRepository Wallets { get; }
+    IRepository<Ehgiz.DAL.Entities.WalletTransaction> WalletTransactions { get; }
+    IHandoverRepository Handovers { get; }
+    IRepository<Ehgiz.DAL.Entities.HandoverImage> HandoverImages { get; }
+    IRepository<Ehgiz.DAL.Entities.PlatformRevenueLedger> PlatformRevenueLedgers { get; }
+    IRepository<Ehgiz.DAL.Entities.SystemSetting> SystemSettings { get; }
     Task<int> SaveChangesAsync();
     Task<IDbContextTransaction> BeginTransactionAsync();
 }
