@@ -16,6 +16,10 @@ public class HandoverImageConfiguration : IEntityTypeConfiguration<HandoverImage
             .IsRequired()
             .HasMaxLength(500);
 
+        builder.Property(hi => hi.PublicId)
+            .IsRequired()
+            .HasMaxLength(250);
+
         builder.Property(hi => hi.Caption)
             .HasMaxLength(300);
 

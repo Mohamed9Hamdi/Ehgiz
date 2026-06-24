@@ -14,13 +14,13 @@ public class AdminService : IAdminService
 {
     private readonly IUnitOfWork _uow;
     private readonly INotificationService _notificationService;
-    private readonly string _handoverUploadPath;
+    private readonly ICloudinaryService _cloudinaryService;
 
-    public AdminService(IUnitOfWork uow, IWebHostEnvironment env, INotificationService notificationService)
+    public AdminService(IUnitOfWork uow, ICloudinaryService cloudinaryService, INotificationService notificationService)
     {
         _uow = uow;
         _notificationService = notificationService;
-        _handoverUploadPath = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "uploads", "handover");
+        _cloudinaryService = cloudinaryService;
     }
 
     // ── List Disputed Bookings ──────────────────────────────────────────────
@@ -534,12 +534,13 @@ public class AdminService : IAdminService
                      ?? new List<HandoverImage>();
 
         foreach (var image in images)
+        {
+            if (!string.IsNullOrEmpty(image.PublicId))
+            {
+                await _cloudinaryService.DeleteImageAsync(image.PublicId);
+            }
             _uow.HandoverImages.Remove(image);
-
-        // Delete physical files
-        var folderPath = Path.Combine(_handoverUploadPath, bookingId.ToString());
-        if (Directory.Exists(folderPath))
-            Directory.Delete(folderPath, recursive: true);
+        }
     }
 
     private static BookingDto MapToDto(Booking b)

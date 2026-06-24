@@ -134,11 +134,11 @@ public class DatabaseSeeder
         await _context.SaveChangesAsync();
 
         _context.ToolImages.AddRange(
-            new ToolImage { ToolId = drill.Id, ImageUrl = "https://cdn.ehgiz.com/tools/drill-1.jpg" },
-            new ToolImage { ToolId = drill.Id, ImageUrl = "https://cdn.ehgiz.com/tools/drill-2.jpg" },
-            new ToolImage { ToolId = mower.Id, ImageUrl = "https://cdn.ehgiz.com/tools/mower-1.jpg" },
-            new ToolImage { ToolId = ladder.Id, ImageUrl = "https://cdn.ehgiz.com/tools/ladder-1.jpg" },
-            new ToolImage { ToolId = washer.Id, ImageUrl = "https://cdn.ehgiz.com/tools/washer-1.jpg" });
+            new ToolImage { ToolId = drill.Id, ImageUrl = "https://cdn.ehgiz.com/tools/drill-1.jpg", PublicId = "drill-1" },
+            new ToolImage { ToolId = drill.Id, ImageUrl = "https://cdn.ehgiz.com/tools/drill-2.jpg", PublicId = "drill-2" },
+            new ToolImage { ToolId = mower.Id, ImageUrl = "https://cdn.ehgiz.com/tools/mower-1.jpg", PublicId = "mower-1" },
+            new ToolImage { ToolId = ladder.Id, ImageUrl = "https://cdn.ehgiz.com/tools/ladder-1.jpg", PublicId = "ladder-1" },
+            new ToolImage { ToolId = washer.Id, ImageUrl = "https://cdn.ehgiz.com/tools/washer-1.jpg", PublicId = "washer-1" });
 
         var completedBooking = new Booking
         {

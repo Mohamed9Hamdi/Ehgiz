@@ -27,6 +27,9 @@ public static class DependencyInjection
         StripeConfiguration.ApiKey = configuration["Stripe:SecretKey"];
 
         services.Configure<SendGridSettings>(configuration.GetSection("SendGrid"));
+
+        // Cloudinary
+        services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
         services.AddScoped<ITokenService, Ehgiz.Application.Services.TokenService>();
         services.AddScoped<IEmailService, SendGridEmailService>();
         services.AddScoped<IAuthService, AuthService>();
@@ -46,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IToolService, ToolService>();
+        services.AddScoped<ICloudinaryService, CloudinaryService>();
         services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IMessageService, MessageService>();

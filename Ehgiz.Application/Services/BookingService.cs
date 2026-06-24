@@ -13,13 +13,13 @@ public class BookingService : IBookingService
 {
     private readonly IUnitOfWork _uow;
     private readonly INotificationService _notificationService;
-    private readonly string _handoverUploadPath;
+    private readonly ICloudinaryService _cloudinaryService;
 
-    public BookingService(IUnitOfWork uow, IWebHostEnvironment env, INotificationService notificationService)
+    public BookingService(IUnitOfWork uow, ICloudinaryService cloudinaryService, INotificationService notificationService)
     {
         _uow = uow;
         _notificationService = notificationService;
-        _handoverUploadPath = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "uploads", "handover");
+        _cloudinaryService = cloudinaryService;
     }
 
     // ── Create Booking ──────────────────────────────────────────────────────
@@ -654,26 +654,17 @@ public class BookingService : IBookingService
         if (dto.Images == null || dto.Images.Count == 0)
             return;
 
-        var folderPath = Path.Combine(_handoverUploadPath, handover.BookingId.ToString());
-        Directory.CreateDirectory(folderPath);
-
         foreach (var file in dto.Images)
         {
             if (file.Length == 0) continue;
 
-            var ext = Path.GetExtension(file.FileName);
-            var fileName = $"{Guid.NewGuid()}{ext}";
-            var filePath = Path.Combine(folderPath, fileName);
-
-            await using var stream = new FileStream(filePath, FileMode.Create);
-            await file.CopyToAsync(stream);
-
-            var relativeUrl = $"/uploads/handover/{handover.BookingId}/{fileName}";
+            var uploadResult = await _cloudinaryService.UploadImageAsync(file);
 
             await _uow.HandoverImages.AddAsync(new HandoverImage
             {
                 Handover = handover,
-                ImageUrl = relativeUrl,
+                ImageUrl = uploadResult.ImageUrl,
+                PublicId = uploadResult.PublicId,
                 Caption = null,
                 UploadedAt = DateTime.UtcNow
             });
@@ -689,12 +680,13 @@ public class BookingService : IBookingService
                      ?? new List<HandoverImage>();
 
         foreach (var image in images)
+        {
+            if (!string.IsNullOrEmpty(image.PublicId))
+            {
+                await _cloudinaryService.DeleteImageAsync(image.PublicId);
+            }
             _uow.HandoverImages.Remove(image);
-
-        // Delete physical files
-        var folderPath = Path.Combine(_handoverUploadPath, bookingId.ToString());
-        if (Directory.Exists(folderPath))
-            Directory.Delete(folderPath, recursive: true);
+        }
     }
 
     // ── Allowed Actions ─────────────────────────────────────────────────────
