@@ -20,7 +20,7 @@ public class AdminService : IAdminService
     {
         _uow = uow;
         _notificationService = notificationService;
-        _handoverUploadPath = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "uploads", "handover");
+        _handoverUploadPath = Path.Combine(env.ContentRootPath, "uploads", "handover");
     }
 
     // ── List Disputed Bookings ──────────────────────────────────────────────

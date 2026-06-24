@@ -19,7 +19,7 @@ public class BookingService : IBookingService
     {
         _uow = uow;
         _notificationService = notificationService;
-        _handoverUploadPath = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "uploads", "handover");
+        _handoverUploadPath = Path.Combine(env.ContentRootPath, "uploads", "handover");
     }
 
     // ── Create Booking ──────────────────────────────────────────────────────
@@ -245,10 +245,17 @@ public class BookingService : IBookingService
         await _uow.Handovers.AddAsync(handover);
         booking.Status = BookingStatus.DeliveryHandover;
 
-        // Save handover images
         await SaveHandoverImagesAsync(handover, dto);
-
-        await _uow.SaveChangesAsync();
+        try
+        {
+            await _uow.SaveChangesAsync();
+        }
+        catch
+        {
+            var folder = Path.Combine(_handoverUploadPath, handover.BookingId.ToString());
+            if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
+            throw;
+        }
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -350,10 +357,17 @@ public class BookingService : IBookingService
         await _uow.Handovers.AddAsync(handover);
         booking.Status = BookingStatus.ReturnHandover;
 
-        // Save handover images
         await SaveHandoverImagesAsync(handover, dto);
-
-        await _uow.SaveChangesAsync();
+        try
+        {
+            await _uow.SaveChangesAsync();
+        }
+        catch
+        {
+            var folder = Path.Combine(_handoverUploadPath, handover.BookingId.ToString());
+            if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
+            throw;
+        }
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -626,8 +640,7 @@ public class BookingService : IBookingService
             booking.Payment.EscrowStatus = EscrowStatus.Released;
         }
 
-        // Cleanup handover images from DB and file system
-        await CleanupHandoverImagesAsync(booking.Id);
+        await CleanupHandoverImagesAsync(booking);
     }
 
     private async Task RefundRenterAsync(Booking booking)
@@ -680,21 +693,19 @@ public class BookingService : IBookingService
         }
     }
 
-    private async Task CleanupHandoverImagesAsync(int bookingId)
+    private Task CleanupHandoverImagesAsync(Booking booking)
     {
-        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId);
-        if (booking == null) return;
-
         var images = booking.Handovers?.SelectMany(h => h.Images ?? new List<HandoverImage>()).ToList()
                      ?? new List<HandoverImage>();
 
         foreach (var image in images)
             _uow.HandoverImages.Remove(image);
 
-        // Delete physical files
-        var folderPath = Path.Combine(_handoverUploadPath, bookingId.ToString());
+        var folderPath = Path.Combine(_handoverUploadPath, booking.Id.ToString());
         if (Directory.Exists(folderPath))
             Directory.Delete(folderPath, recursive: true);
+
+        return Task.CompletedTask;
     }
 
     // ── Allowed Actions ─────────────────────────────────────────────────────
