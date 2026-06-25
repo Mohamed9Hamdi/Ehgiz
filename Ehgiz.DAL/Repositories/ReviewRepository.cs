@@ -7,11 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class ReviewRepository : Repository<Review>, IReviewRepository
 {
-    private readonly EhgizDbContext _context;
-
     public ReviewRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<List<Review>> GetByToolAsync(int toolId)

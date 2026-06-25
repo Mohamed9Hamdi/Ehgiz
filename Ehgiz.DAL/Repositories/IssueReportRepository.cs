@@ -7,11 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class IssueReportRepository : Repository<IssueReport>, IIssueReportRepository
 {
-    private readonly EhgizDbContext _context;
-
     public IssueReportRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<IReadOnlyList<IssueReport>> GetAllWithDetailsAsync()

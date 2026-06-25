@@ -7,11 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class UserConnectionRepository : Repository<UserConnection>, IUserConnectionRepository
 {
-    private readonly EhgizDbContext _context;
-
     public UserConnectionRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<IReadOnlyList<UserConnection>> GetByUserIdAsync(int userId)

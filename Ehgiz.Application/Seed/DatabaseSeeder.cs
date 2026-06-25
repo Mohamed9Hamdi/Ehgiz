@@ -146,8 +146,13 @@ public class DatabaseSeeder
             RenterId = sara.Id,
             StartDate = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
             EndDate = new DateTime(2026, 2, 3, 0, 0, 0, DateTimeKind.Utc),
-            TotalPrice = 225m,
+            PricePerDay = 75m,
+            RentalCost = 150m,
+            InsuranceAmount = 150m,
+            PlatformFee = 15m,
+            TotalPrice = 300m,
             Status = BookingStatus.Completed,
+            CompletedAt = new DateTime(2026, 2, 4, 10, 0, 0, DateTimeKind.Utc),
             CreatedAt = SeedDate
         };
 
@@ -157,7 +162,11 @@ public class DatabaseSeeder
             RenterId = sara.Id,
             StartDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
             EndDate = new DateTime(2026, 3, 12, 0, 0, 0, DateTimeKind.Utc),
-            TotalPrice = 150m,
+            PricePerDay = 50m,
+            RentalCost = 100m,
+            InsuranceAmount = 100m,
+            PlatformFee = 10m,
+            TotalPrice = 200m,
             Status = BookingStatus.Active,
             CreatedAt = SeedDate
         };
@@ -169,20 +178,20 @@ public class DatabaseSeeder
             new Payment
             {
                 BookingId = completedBooking.Id,
-                Amount = 225m,
+                Amount = 300m,
                 PaymentMethod = PaymentMethod.CreditCard,
                 PaymentStatus = PaymentStatus.Completed,
                 EscrowStatus = EscrowStatus.Released,
-                PaidAt = new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc)
+                PaidAt = new DateTime(2026, 2, 1, 10, 0, 0, DateTimeKind.Utc)
             },
             new Payment
             {
                 BookingId = activeBooking.Id,
-                Amount = 150m,
+                Amount = 200m,
                 PaymentMethod = PaymentMethod.Wallet,
                 PaymentStatus = PaymentStatus.Completed,
                 EscrowStatus = EscrowStatus.Held,
-                PaidAt = new DateTime(2026, 3, 9, 14, 30, 0, DateTimeKind.Utc)
+                PaidAt = new DateTime(2026, 3, 10, 9, 0, 0, DateTimeKind.Utc)
             });
 
         _context.Reviews.Add(new Review

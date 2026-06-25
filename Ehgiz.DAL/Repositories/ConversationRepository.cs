@@ -7,11 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class ConversationRepository : Repository<Conversation>, IConversationRepository
 {
-    private readonly EhgizDbContext _context;
-
     public ConversationRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<Conversation?> GetByUsersAsync(int user1Id, int user2Id)

@@ -7,11 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class PasswordResetCodeRepository : Repository<PasswordResetCode>, IPasswordResetCodeRepository
 {
-    private readonly EhgizDbContext _context;
-
     public PasswordResetCodeRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<PasswordResetCode?> GetByUserAndHashAsync(int userId, string codeHash)

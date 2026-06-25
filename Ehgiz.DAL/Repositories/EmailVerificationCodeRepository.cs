@@ -7,11 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class EmailVerificationCodeRepository : Repository<EmailVerificationCode>, IEmailVerificationCodeRepository
 {
-    private readonly EhgizDbContext _context;
-
     public EmailVerificationCodeRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<EmailVerificationCode?> GetByUserAndHashAsync(int userId, string codeHash)

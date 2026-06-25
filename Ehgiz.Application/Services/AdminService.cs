@@ -95,6 +95,12 @@ public class AdminService : IAdminService
             CreatedAt = DateTime.UtcNow
         });
 
+        if (booking.Payment != null)
+        {
+            booking.Payment.EscrowStatus = EscrowStatus.Released;
+            booking.Payment.PaymentStatus = PaymentStatus.Completed;
+        }
+
         FinalizeDispute(booking, BookingStatus.Completed, dto.ResolutionNotes);
         await CleanupHandoverImagesAsync(bookingId);
         await _uow.SaveChangesAsync();

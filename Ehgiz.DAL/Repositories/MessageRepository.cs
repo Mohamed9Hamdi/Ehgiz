@@ -8,11 +8,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class MessageRepository : Repository<Message>, IMessageRepository
 {
-    private readonly EhgizDbContext _context;
-
     public MessageRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<IReadOnlyList<Message>> GetByConversationIdAsync(int conversationId, int page, int pageSize)

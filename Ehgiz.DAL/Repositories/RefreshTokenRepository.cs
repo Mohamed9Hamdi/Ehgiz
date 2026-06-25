@@ -7,11 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class RefreshTokenRepository : Repository<RefreshToken>, IRefreshTokenRepository
 {
-    private readonly EhgizDbContext _context;
-
     public RefreshTokenRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<RefreshToken?> GetByHashAsync(string tokenHash)

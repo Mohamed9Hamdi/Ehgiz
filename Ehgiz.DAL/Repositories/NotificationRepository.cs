@@ -7,11 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class NotificationRepository : Repository<Notification>, INotificationRepository
 {
-    private readonly EhgizDbContext _context;
-
     public NotificationRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<IReadOnlyList<Notification>> GetByUserIdAsync(int userId)

@@ -7,11 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class ToolRepository : Repository<Tool>, IToolRepository
 {
-    private readonly EhgizDbContext _context;
-
     public ToolRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<(IReadOnlyList<Tool> Items, int TotalCount)> GetFilteredAsync(
