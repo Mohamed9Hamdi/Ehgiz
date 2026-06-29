@@ -12,10 +12,12 @@ namespace Ehgiz.API.Controllers;
 public class ToolsController : ControllerBase
 {
     private readonly IToolService _toolService;
+    private readonly IToolSuggestionService _toolSuggestionService;
 
-    public ToolsController(IToolService toolService)
+    public ToolsController(IToolService toolService, IToolSuggestionService toolSuggestionService)
     {
         _toolService = toolService;
+        _toolSuggestionService = toolSuggestionService;
     }
 
     private int CurrentUserId =>
@@ -58,6 +60,20 @@ public class ToolsController : ControllerBase
 
 
 
+
+    [HttpPost("suggest-from-images")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<ToolSuggestionDto>> SuggestFromImages(
+        [FromForm] List<IFormFile> images,
+        CancellationToken cancellationToken)
+    {
+        if (images is null || images.Count == 0)
+            return BadRequest(new { message = "At least one image is required." });
+
+        var suggestion = await _toolSuggestionService.SuggestFromImagesAsync(images, cancellationToken);
+        return Ok(suggestion);
+    }
 
     [HttpPost]
     [Authorize]

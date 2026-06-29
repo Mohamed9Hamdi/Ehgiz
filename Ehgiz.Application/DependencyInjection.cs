@@ -27,6 +27,8 @@ public static class DependencyInjection
         StripeConfiguration.ApiKey = configuration["Stripe:SecretKey"];
 
         services.Configure<SendGridSettings>(configuration.GetSection("SendGrid"));
+        services.Configure<GitHubModelsSettings>(configuration.GetSection("GitHubModels"));
+        services.AddHttpClient<IToolSuggestionService, ToolSuggestionService>();
         services.AddScoped<ITokenService, Ehgiz.Application.Services.TokenService>();
         services.AddScoped<IEmailService, SendGridEmailService>();
         services.AddScoped<IAuthService, AuthService>();
