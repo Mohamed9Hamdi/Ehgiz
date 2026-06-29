@@ -23,10 +23,11 @@ public interface IAdminService
     Task UpdateIssueReportStatusAsync(int id, UpdateIssueStatusRequest dto);
 
     // Users
-    Task<IEnumerable<AdminUserDto>> GetUsersAsync();
+    Task<IEnumerable<AdminUserDetailsDto>> GetUsersAsync();
     Task<AdminUserDetailsDto> GetUserByIdAsync(int userId);
     Task SetUserActiveAsync(int userId, bool isActive);
     Task SetUserRoleAsync(int userId, string role);
+    Task DeleteUserAsync(int userId);
 
     // Listings
     Task<IEnumerable<AdminListingDto>> GetListingsAsync();

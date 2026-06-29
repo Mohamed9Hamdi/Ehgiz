@@ -120,7 +120,7 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> GetUsers()
     {
         var result = await _adminService.GetUsersAsync();
-        return Ok(ApiResponse<IEnumerable<AdminUserDto>>.Success(result));
+        return Ok(ApiResponse<IEnumerable<AdminUserDetailsDto>>.Success(result));
     }
 
     // GET api/admin/users/{id}
@@ -146,6 +146,14 @@ public class AdminController : ControllerBase
     {
         await _adminService.SetUserRoleAsync(id, dto.Role);
         return Ok(ApiResponse<object>.Success(null!, $"User #{id} role updated to '{dto.Role}'."));
+    }
+
+    // DELETE api/admin/users/{id}
+    [HttpDelete("users/{id:int}")]
+    public async Task<IActionResult> DeleteUser(int id)
+    {
+        await _adminService.DeleteUserAsync(id);
+        return Ok(ApiResponse<object>.Success(null!, $"User #{id} has been deleted."));
     }
 
     // ── Listing Management ────────────────────────────────────────────────────

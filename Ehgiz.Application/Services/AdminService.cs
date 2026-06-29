@@ -518,24 +518,32 @@ public class AdminService : IAdminService
 
     // ── User Management ─────────────────────────────────────────────────────
 
-    public async Task<IEnumerable<AdminUserDto>> GetUsersAsync()
+    public async Task<IEnumerable<AdminUserDetailsDto>> GetUsersAsync()
     {
         var users = _userManager.Users.OrderByDescending(u => u.CreatedAt).ToList();
-        var result = new List<AdminUserDto>(users.Count);
+        var result = new List<AdminUserDetailsDto>(users.Count);
 
         foreach (var user in users)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            result.Add(new AdminUserDto(
+            var totalListings = await _uow.Tools.CountAsync(t => t.OwnerId == user.Id);
+            var totalBookings = await _uow.Bookings.CountAsync(b => b.RenterId == user.Id);
+
+            result.Add(new AdminUserDetailsDto(
                 Id: user.Id,
                 FullName: user.FullName,
                 Email: user.Email ?? string.Empty,
                 ProfileImageUrl: user.ProfileImageUrl,
+                Address: user.Address,
                 City: user.City,
                 IsActive: user.IsActive,
                 EmailConfirmed: user.EmailConfirmed,
                 Role: roles.FirstOrDefault() ?? AppRoles.User,
-                CreatedAt: user.CreatedAt));
+                CreatedAt: user.CreatedAt,
+                TotalListings: totalListings,
+                TotalBookings: totalBookings,
+                StripeCustomerId: user.StripeCustomerId,
+                StripeAccountId: user.StripeAccountId));
         }
 
         return result;
@@ -588,6 +596,35 @@ public class AdminService : IAdminService
         var currentRoles = await _userManager.GetRolesAsync(user);
         await _userManager.RemoveFromRolesAsync(user, currentRoles);
         await _userManager.AddToRoleAsync(user, role);
+    }
+
+    public async Task DeleteUserAsync(int userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString())
+            ?? throw new KeyNotFoundException($"User {userId} not found.");
+
+        var hasActiveBookings = await _uow.Bookings.CountAsync(b =>
+            b.RenterId == userId &&
+            (b.Status == BookingStatus.Pending ||
+             b.Status == BookingStatus.Accepted ||
+             b.Status == BookingStatus.Active)) > 0;
+
+        if (hasActiveBookings)
+            throw new InvalidOperationException("Cannot delete a user that has active or pending bookings.");
+
+        var hasActiveListings = await _uow.Bookings.CountAsync(b =>
+            b.Tool.OwnerId == userId &&
+            (b.Status == BookingStatus.Pending ||
+             b.Status == BookingStatus.Accepted ||
+             b.Status == BookingStatus.Active)) > 0;
+
+        if (hasActiveListings)
+            throw new InvalidOperationException("Cannot delete a user that owns listings with active or pending bookings.");
+
+        var result = await _userManager.DeleteAsync(user);
+        if (!result.Succeeded)
+            throw new InvalidOperationException(
+                $"Failed to delete user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
     }
 
     // ── Listing Management ──────────────────────────────────────────────────
