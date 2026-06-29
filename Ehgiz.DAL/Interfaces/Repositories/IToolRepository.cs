@@ -11,4 +11,6 @@ public interface IToolRepository : IRepository<Tool>
     Task<Tool?> GetByIdWithDetailsAsync(int id);
 
     Task<IReadOnlyList<Tool>> GetByOwnerAsync(int ownerId);
+
+    Task<IReadOnlyList<Tool>> GetAllWithDetailsAsync();
 }

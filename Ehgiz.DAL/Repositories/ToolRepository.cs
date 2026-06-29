@@ -73,4 +73,15 @@ public class ToolRepository : Repository<Tool>, IToolRepository
             .Where(t => t.OwnerId == ownerId)
             .ToListAsync();
     }
+
+    public async Task<IReadOnlyList<Tool>> GetAllWithDetailsAsync()
+    {
+        return await _context.Tools
+            .Include(t => t.Owner)
+            .Include(t => t.Category)
+            .Include(t => t.Images)
+            .AsNoTracking()
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
+    }
 }
