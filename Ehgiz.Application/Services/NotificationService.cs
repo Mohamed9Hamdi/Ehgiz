@@ -58,11 +58,13 @@ public class NotificationService : INotificationService
             throw new UnauthorizedAccessException("Not your notification");
 
         await _uow.Notifications.MarkAsReadAsync(notificationId);
+        await _broadcaster.NotifyReadStateChangedAsync(userId);
     }
 
     public async Task MarkAllAsReadAsync(int userId)
     {
         await _uow.Notifications.MarkAllAsReadAsync(userId);
+        await _broadcaster.NotifyReadStateChangedAsync(userId);
     }
 
     public async Task DeleteAsync(int notificationId, int userId)

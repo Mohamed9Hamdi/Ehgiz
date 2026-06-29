@@ -20,4 +20,11 @@ public class NotificationBroadcaster : INotificationBroadcaster
             .Group($"user_{userId}")
             .SendAsync("ReceiveNotification", notification);
     }
+
+    public async Task NotifyReadStateChangedAsync(int userId)
+    {
+        await _hub.Clients
+            .Group($"user_{userId}")
+            .SendAsync("NotificationsReadStateChanged");
+    }
 }
