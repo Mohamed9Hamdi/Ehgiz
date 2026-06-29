@@ -15,6 +15,7 @@ public record AdminUserDetailsDto(
     int Id,
     string FullName,
     string Email,
+    string? PhoneNumber,
     string? ProfileImageUrl,
     string? Address,
     string? City,
