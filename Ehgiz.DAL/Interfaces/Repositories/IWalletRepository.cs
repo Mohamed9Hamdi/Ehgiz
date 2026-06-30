@@ -6,5 +6,4 @@ public interface IWalletRepository : IRepository<Wallet>
 {
     Task<Wallet?> GetByUserIdAsync(int userId);
     Task<Wallet> GetOrCreateByUserIdAsync(int userId);
-    Task<Wallet?> GetByUserIdWithTransactionsAsync(int userId);
 }

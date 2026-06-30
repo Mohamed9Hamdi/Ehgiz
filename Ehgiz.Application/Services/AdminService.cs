@@ -7,8 +7,10 @@ using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
+using Mapster;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Ehgiz.Application.Services;
 
@@ -45,11 +47,8 @@ public class AdminService : IAdminService
         var openIssues = await _uow.IssueReports.CountAsync(ir => ir.Status == IssueReportStatus.Open);
         var totalCategories = await _uow.Categories.CountAsync();
 
-        var allRevenue = await _uow.PlatformRevenueLedgers.GetAllAsync();
-        var totalRevenue = allRevenue.Sum(r => r.Amount);
-
-        var allWallets = await _uow.Wallets.GetAllAsync();
-        var pendingEscrow = allWallets.Sum(w => w.HeldBalance);
+        var totalRevenue = await _uow.PlatformRevenueLedgers.Query().SumAsync(r => r.Amount);
+        var pendingEscrow = await _uow.Wallets.Query().SumAsync(w => w.HeldBalance);
 
         return new AdminDashboardStatsDto(
             TotalUsers: totalUsers,
@@ -272,7 +271,10 @@ public class AdminService : IAdminService
         });
 
         if (booking.Payment != null)
+        {
             booking.Payment.EscrowStatus = EscrowStatus.Released;
+            booking.Payment.PaymentStatus = PaymentStatus.Completed;
+        }
 
         FinalizeDispute(booking, BookingStatus.Completed, dto.ResolutionNotes);
         await CleanupHandoverImagesAsync(bookingId);
@@ -385,7 +387,10 @@ public class AdminService : IAdminService
         }
 
         if (booking.Payment != null)
+        {
             booking.Payment.EscrowStatus = EscrowStatus.Released;
+            booking.Payment.PaymentStatus = PaymentStatus.Completed;
+        }
 
         FinalizeDispute(booking, BookingStatus.Completed, dto.ResolutionNotes);
         await CleanupHandoverImagesAsync(bookingId);
@@ -470,33 +475,24 @@ public class AdminService : IAdminService
 
     public async Task<IEnumerable<IssueReportDto>> GetIssueReportsAsync()
     {
-        var all = await _uow.IssueReports.GetAllWithDetailsAsync();
-        return all.Select(ir => new IssueReportDto(
-            Id: ir.Id,
-            ReporterName: ir.Reporter?.FullName ?? string.Empty,
-            Title: ir.Title,
-            Description: ir.Description,
-            Status: ir.Status?.ToString() ?? string.Empty,
-            CreatedAt: ir.CreatedAt));
+        return await _uow.IssueReports.Query()
+            .OrderByDescending(ir => ir.CreatedAt)
+            .ProjectToType<IssueReportDto>()
+            .ToListAsync();
     }
 
     public async Task<IssueReportDto> GetIssueReportByIdAsync(int id)
     {
-        var ir = await _uow.IssueReports.GetByIdWithDetailsAsync(id)
+        return await _uow.IssueReports.Query()
+            .Where(ir => ir.Id == id)
+            .ProjectToType<IssueReportDto>()
+            .FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException($"Issue report {id} not found.");
-
-        return new IssueReportDto(
-            Id: ir.Id,
-            ReporterName: ir.Reporter?.FullName ?? string.Empty,
-            Title: ir.Title,
-            Description: ir.Description,
-            Status: ir.Status?.ToString() ?? string.Empty,
-            CreatedAt: ir.CreatedAt);
     }
 
     public async Task UpdateIssueReportStatusAsync(int id, UpdateIssueStatusRequest dto)
     {
-        var ir = await _uow.IssueReports.GetByIdWithDetailsAsync(id)
+        var ir = await _uow.IssueReports.GetByIdAsync(id)
             ?? throw new KeyNotFoundException($"Issue report {id} not found.");
 
         if (!Enum.TryParse<IssueReportStatus>(dto.Status, ignoreCase: true, out var newStatus))
@@ -520,15 +516,27 @@ public class AdminService : IAdminService
 
     public async Task<IEnumerable<AdminUserDetailsDto>> GetUsersAsync()
     {
-        var users = _userManager.Users.OrderByDescending(u => u.CreatedAt).ToList();
-        var result = new List<AdminUserDetailsDto>(users.Count);
+        var users = await _userManager.Users.OrderByDescending(u => u.CreatedAt).ToListAsync();
+        if (users.Count == 0) return [];
 
+        var userIds = users.Select(u => u.Id).ToList();
+
+        var listingCounts = await _uow.Tools.Query()
+            .Where(t => userIds.Contains(t.OwnerId))
+            .GroupBy(t => t.OwnerId)
+            .Select(g => new { OwnerId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.OwnerId, x => x.Count);
+
+        var bookingCounts = await _uow.Bookings.Query()
+            .Where(b => userIds.Contains(b.RenterId))
+            .GroupBy(b => b.RenterId)
+            .Select(g => new { RenterId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.RenterId, x => x.Count);
+
+        var result = new List<AdminUserDetailsDto>(users.Count);
         foreach (var user in users)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            var totalListings = await _uow.Tools.CountAsync(t => t.OwnerId == user.Id);
-            var totalBookings = await _uow.Bookings.CountAsync(b => b.RenterId == user.Id);
-
             result.Add(new AdminUserDetailsDto(
                 Id: user.Id,
                 FullName: user.FullName,
@@ -541,8 +549,8 @@ public class AdminService : IAdminService
                 EmailConfirmed: user.EmailConfirmed,
                 Role: roles.FirstOrDefault() ?? AppRoles.User,
                 CreatedAt: user.CreatedAt,
-                TotalListings: totalListings,
-                TotalBookings: totalBookings,
+                TotalListings: listingCounts.GetValueOrDefault(user.Id, 0),
+                TotalBookings: bookingCounts.GetValueOrDefault(user.Id, 0),
                 StripeCustomerId: user.StripeCustomerId,
                 StripeAccountId: user.StripeAccountId));
         }
@@ -633,27 +641,27 @@ public class AdminService : IAdminService
 
     public async Task<IEnumerable<AdminListingDto>> GetListingsAsync()
     {
-        var tools = await _uow.Tools.GetAllWithDetailsAsync();
-        return tools.Select(t => new AdminListingDto(
-            Id: t.Id,
-            Name: t.Name,
-            Description: t.Description,
-            PricePerDay: t.PricePerDay,
-            InsurancePrice: t.InsurancePrice,
-            Condition: t.Condition?.ToString(),
-            Location: t.Location,
-            IsAvailable: t.IsAvailable,
-            CategoryId: t.CategoryId,
-            CategoryName: t.Category?.Name ?? string.Empty,
-            OwnerId: t.OwnerId,
-            OwnerName: t.Owner?.FullName ?? string.Empty,
-            FirstImageUrl: t.Images?.FirstOrDefault()?.ImageUrl,
-            CreatedAt: t.CreatedAt));
+        return await _uow.Tools.Query()
+            .OrderByDescending(t => t.CreatedAt)
+            .ProjectToType<AdminListingDto>()
+            .ToListAsync();
     }
 
     public async Task<AdminListingDetailsDto> GetListingByIdAsync(int id)
     {
-        var tool = await _uow.Tools.GetByIdWithDetailsAsync(id)
+        var tool = await _uow.Tools.Query()
+            .Where(t => t.Id == id)
+            .Select(t => new
+            {
+                t.Id, t.Name, t.Description, t.PricePerDay, t.InsurancePrice,
+                t.Condition, t.Location, t.IsAvailable, t.CategoryId,
+                CategoryName = t.Category.Name,
+                t.OwnerId,
+                OwnerName = t.Owner.FullName,
+                ImageUrls = t.Images.Select(i => i.ImageUrl).ToList(),
+                t.CreatedAt
+            })
+            .FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException($"Listing {id} not found.");
 
         var totalBookings = await _uow.Bookings.CountAsync(b => b.ToolId == id);
@@ -664,14 +672,14 @@ public class AdminService : IAdminService
             Description: tool.Description,
             PricePerDay: tool.PricePerDay,
             InsurancePrice: tool.InsurancePrice,
-            Condition: tool.Condition?.ToString(),
+            Condition: tool.Condition == null ? null : tool.Condition.ToString(),
             Location: tool.Location,
             IsAvailable: tool.IsAvailable,
             CategoryId: tool.CategoryId,
-            CategoryName: tool.Category?.Name ?? string.Empty,
+            CategoryName: tool.CategoryName,
             OwnerId: tool.OwnerId,
-            OwnerName: tool.Owner?.FullName ?? string.Empty,
-            ImageUrls: tool.Images?.Select(i => i.ImageUrl).ToList() ?? [],
+            OwnerName: tool.OwnerName,
+            ImageUrls: tool.ImageUrls,
             CreatedAt: tool.CreatedAt,
             TotalBookings: totalBookings);
     }
@@ -709,16 +717,15 @@ public class AdminService : IAdminService
 
     public async Task<IEnumerable<AdminCategoryDto>> GetCategoriesAsync()
     {
-        var categories = await _uow.Categories.GetAllAsync();
-        var result = new List<AdminCategoryDto>(categories.Count);
-
-        foreach (var cat in categories)
-        {
-            var toolCount = await _uow.Tools.CountAsync(t => t.CategoryId == cat.Id);
-            result.Add(new AdminCategoryDto(cat.Id, cat.Name, cat.Description, cat.ImageUrl, cat.IsActive, toolCount));
-        }
-
-        return result;
+        return await _uow.Categories.Query()
+            .Select(c => new AdminCategoryDto(
+                c.Id,
+                c.Name,
+                c.Description,
+                c.ImageUrl,
+                c.IsActive,
+                c.Tools.Count()))
+            .ToListAsync();
     }
 
     public async Task<AdminCategoryDto> CreateCategoryAsync(CreateCategoryRequest request)
@@ -767,21 +774,6 @@ public class AdminService : IAdminService
         await _uow.SaveChangesAsync();
     }
 
-    // ── Payment Management ──────────────────────────────────────────────────
-
-    public async Task<IEnumerable<AdminPaymentDto>> GetPaymentsAsync()
-    {
-        var payments = await _uow.Payments.GetAllWithDetailsAsync();
-        return payments.Select(MapPaymentToDto);
-    }
-
-    public async Task<AdminPaymentDto> GetPaymentByIdAsync(int id)
-    {
-        var payment = await _uow.Payments.GetByIdWithDetailsAsync(id)
-            ?? throw new KeyNotFoundException($"Payment {id} not found.");
-        return MapPaymentToDto(payment);
-    }
-
     // ── Platform Settings ───────────────────────────────────────────────────
 
     public async Task<decimal> GetPlatformFeeAsync()
@@ -809,6 +801,24 @@ public class AdminService : IAdminService
         }
 
         await _uow.SaveChangesAsync();
+    }
+
+    // ── Wallet & Transaction Management ────────────────────────────────────
+
+    public async Task<IEnumerable<AdminWalletDto>> GetWalletsAsync()
+    {
+        return await _uow.Wallets.Query()
+            .OrderByDescending(w => w.UpdatedAt)
+            .ProjectToType<AdminWalletDto>()
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<AdminWalletTransactionDto>> GetAllTransactionsAsync()
+    {
+        return await _uow.WalletTransactions.Query()
+            .OrderByDescending(t => t.CreatedAt)
+            .ProjectToType<AdminWalletTransactionDto>()
+            .ToListAsync();
     }
 
     // ── Private Helpers ─────────────────────────────────────────────────────
@@ -844,19 +854,6 @@ public class AdminService : IAdminService
         if (Directory.Exists(folderPath))
             Directory.Delete(folderPath, recursive: true);
     }
-
-    private static AdminPaymentDto MapPaymentToDto(Payment p) => new(
-        Id: p.Id,
-        BookingId: p.BookingId,
-        RenterName: p.Booking?.Renter?.FullName ?? string.Empty,
-        OwnerName: p.Booking?.Tool?.Owner?.FullName ?? string.Empty,
-        ToolName: p.Booking?.Tool?.Name ?? string.Empty,
-        Amount: p.Amount,
-        PaymentMethod: p.PaymentMethod?.ToString(),
-        PaymentStatus: p.PaymentStatus?.ToString(),
-        EscrowStatus: p.EscrowStatus?.ToString(),
-        StripePaymentIntentId: p.StripePaymentIntentId,
-        PaidAt: p.PaidAt);
 
     private static BookingDto MapToDto(Booking b)
     {

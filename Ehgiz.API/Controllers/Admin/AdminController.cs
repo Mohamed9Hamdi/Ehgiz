@@ -225,22 +225,22 @@ public class AdminController : ControllerBase
         return Ok(ApiResponse<object>.Success(null!, $"Category #{id} has been deleted."));
     }
 
-    // ── Payment Management ────────────────────────────────────────────────────
+    // ── Wallet & Transaction Management ───────────────────────────────────────
 
-    // GET api/admin/payments
-    [HttpGet("payments")]
-    public async Task<IActionResult> GetPayments()
+    // GET api/admin/wallets
+    [HttpGet("wallets")]
+    public async Task<IActionResult> GetWallets()
     {
-        var result = await _adminService.GetPaymentsAsync();
-        return Ok(ApiResponse<IEnumerable<AdminPaymentDto>>.Success(result));
+        var result = await _adminService.GetWalletsAsync();
+        return Ok(ApiResponse<IEnumerable<AdminWalletDto>>.Success(result));
     }
 
-    // GET api/admin/payments/{id}
-    [HttpGet("payments/{id:int}")]
-    public async Task<IActionResult> GetPaymentById(int id)
+    // GET api/admin/transactions
+    [HttpGet("transactions")]
+    public async Task<IActionResult> GetAllTransactions()
     {
-        var result = await _adminService.GetPaymentByIdAsync(id);
-        return Ok(ApiResponse<AdminPaymentDto>.Success(result));
+        var result = await _adminService.GetAllTransactionsAsync();
+        return Ok(ApiResponse<IEnumerable<AdminWalletTransactionDto>>.Success(result));
     }
 
     // ── Platform Settings ─────────────────────────────────────────────────────

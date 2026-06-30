@@ -41,11 +41,11 @@ public interface IAdminService
     Task<AdminCategoryDto> UpdateCategoryAsync(int id, UpdateCategoryRequest request);
     Task DeleteCategoryAsync(int id);
 
-    // Payments
-    Task<IEnumerable<AdminPaymentDto>> GetPaymentsAsync();
-    Task<AdminPaymentDto> GetPaymentByIdAsync(int id);
-
     // Platform Settings
     Task<decimal> GetPlatformFeeAsync();
     Task UpdatePlatformFeeAsync(decimal feePercent);
+
+    // Wallets & Transactions
+    Task<IEnumerable<AdminWalletDto>> GetWalletsAsync();
+    Task<IEnumerable<AdminWalletTransactionDto>> GetAllTransactionsAsync();
 }

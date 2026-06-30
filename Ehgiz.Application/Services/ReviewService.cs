@@ -5,6 +5,7 @@ using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
 using Mapster;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace Ehgiz.Application.Services;
@@ -26,16 +27,20 @@ public class ReviewService : IReviewService
         if (!toolExists)
             throw new KeyNotFoundException($"Tool with id {toolId} not found");
 
-        var reviews = await _uow.Reviews.GetByToolAsync(toolId);
-        return reviews.Adapt<List<ReviewDto>>();
+        return await _uow.Reviews.Query()
+            .Where(r => r.Booking.ToolId == toolId)
+            .OrderByDescending(r => r.CreatedAt)
+            .ProjectToType<ReviewDto>()
+            .ToListAsync();
     }
 
     public async Task<ReviewDto> GetByIdAsync(int id)
     {
-        var review = await _uow.Reviews.GetByIdWithDetailsAsync(id)
+        return await _uow.Reviews.Query()
+            .Where(r => r.Id == id)
+            .ProjectToType<ReviewDto>()
+            .FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException($"Review with id {id} not found");
-
-        return review.Adapt<ReviewDto>();
     }
 
     public async Task<ReviewDto> CreateAsync(CreateReviewDto dto, int renterId)
@@ -77,10 +82,15 @@ public class ReviewService : IReviewService
 
     public async Task DeleteAsync(int id, int renterId)
     {
-        var review = await _uow.Reviews.GetByIdWithDetailsAsync(id)
+        var review = await _uow.Reviews.GetByIdAsync(id)
             ?? throw new KeyNotFoundException($"Review {id} not found");
 
-        if (review.Booking.RenterId != renterId)
+        var bookingRenterId = await _uow.Bookings.Query()
+            .Where(b => b.Id == review.BookingId)
+            .Select(b => b.RenterId)
+            .FirstOrDefaultAsync();
+
+        if (bookingRenterId != renterId)
             throw new UnauthorizedAccessException("You can only delete your own reviews");
 
         _uow.Reviews.Remove(review);

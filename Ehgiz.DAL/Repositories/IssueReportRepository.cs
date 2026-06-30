@@ -11,15 +11,4 @@ public class IssueReportRepository : Repository<IssueReport>, IIssueReportReposi
     {
     }
 
-    public async Task<IReadOnlyList<IssueReport>> GetAllWithDetailsAsync()
-        => await _context.IssueReports
-            .Include(ir => ir.Reporter)
-            .AsNoTracking()
-            .OrderByDescending(ir => ir.CreatedAt)
-            .ToListAsync();
-
-    public async Task<IssueReport?> GetByIdWithDetailsAsync(int id)
-        => await _context.IssueReports
-            .Include(ir => ir.Reporter)
-            .FirstOrDefaultAsync(ir => ir.Id == id);
 }
