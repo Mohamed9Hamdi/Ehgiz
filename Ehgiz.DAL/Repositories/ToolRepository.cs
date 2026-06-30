@@ -53,6 +53,48 @@ public class ToolRepository : Repository<Tool>, IToolRepository
         return (items, totalCount);
     }
 
+    public async Task<(IReadOnlyList<Tool> Items, int TotalCount)> SearchByKeywordsAsync(
+        IReadOnlyList<string> keywords,
+        bool? isAvailable,
+        int page,
+        int pageSize)
+    {
+        var normalized = keywords
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (normalized.Count == 0)
+            return ([], 0);
+
+        var query = _context.Tools
+            .Include(t => t.Owner)
+            .Include(t => t.Category)
+            .Include(t => t.Images)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (isAvailable.HasValue)
+            query = query.Where(t => t.IsAvailable == isAvailable);
+
+        query = query.Where(t => normalized.Any(keyword =>
+            t.Name.Contains(keyword) ||
+            (t.Description != null && t.Description.Contains(keyword))));
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(t => t.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        
+
+        return (items, totalCount);
+    }
+
     public async Task<Tool?> GetByIdWithDetailsAsync(int id)
     {
         return await _context.Tools

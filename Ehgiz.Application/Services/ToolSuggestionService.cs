@@ -2,6 +2,7 @@ using System.ClientModel;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Ehgiz.Application.AI;
 using Ehgiz.Application.DTOs.Tools;
 using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Settings;
@@ -16,14 +17,6 @@ namespace Ehgiz.Application.Services;
 
 public class ToolSuggestionService : IToolSuggestionService
 {
-    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif"
-    };
-
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -93,23 +86,7 @@ public class ToolSuggestionService : IToolSuggestionService
 
     private void ValidateImages(IReadOnlyList<IFormFile> images)
     {
-        if (images is null || images.Count == 0)
-            throw new InvalidOperationException("At least one image is required.");
-
-        if (images.Count > _settings.MaxImages)
-            throw new InvalidOperationException($"A maximum of {_settings.MaxImages} images is allowed.");
-
-        foreach (var image in images)
-        {
-            if (image.Length == 0)
-                throw new InvalidOperationException("One or more image files are empty.");
-
-            if (image.Length > _settings.MaxImageBytes)
-                throw new InvalidOperationException("One or more images exceed the 5 MB size limit.");
-
-            if (string.IsNullOrWhiteSpace(image.ContentType) || !AllowedContentTypes.Contains(image.ContentType))
-                throw new InvalidOperationException("Only JPEG, PNG, WEBP, and GIF images are supported.");
-        }
+        AiImageValidator.Validate(images, _settings);
     }
 
     private static string BuildSystemPrompt(IReadOnlyList<DAL.Entities.Category> categories)

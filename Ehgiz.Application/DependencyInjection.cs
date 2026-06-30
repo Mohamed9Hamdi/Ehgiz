@@ -44,6 +44,7 @@ public static class DependencyInjection
                 });
         });
         services.AddScoped<IToolSuggestionService, ToolSuggestionService>();
+        services.AddScoped<IToolPhotoSearchService, ToolPhotoSearchService>();
         services.AddScoped<ITokenService, Ehgiz.Application.Services.TokenService>();
         services.AddScoped<IEmailService, SendGridEmailService>();
         services.AddScoped<IAuthService, AuthService>();

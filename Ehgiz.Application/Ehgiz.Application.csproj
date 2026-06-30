@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="AI\Prompts\ImageAnalysisPrompt.txt" />
+    <EmbeddedResource Include="AI\Prompts\PhotoSearchPrompt.txt" />
   </ItemGroup>
 
 </Project>

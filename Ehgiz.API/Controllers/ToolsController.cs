@@ -13,11 +13,16 @@ public class ToolsController : ControllerBase
 {
     private readonly IToolService _toolService;
     private readonly IToolSuggestionService _toolSuggestionService;
+    private readonly IToolPhotoSearchService _toolPhotoSearchService;
 
-    public ToolsController(IToolService toolService, IToolSuggestionService toolSuggestionService)
+    public ToolsController(
+        IToolService toolService,
+        IToolSuggestionService toolSuggestionService,
+        IToolPhotoSearchService toolPhotoSearchService)
     {
         _toolService = toolService;
         _toolSuggestionService = toolSuggestionService;
+        _toolPhotoSearchService = toolPhotoSearchService;
     }
 
     private int CurrentUserId =>
@@ -73,6 +78,22 @@ public class ToolsController : ControllerBase
 
         var suggestion = await _toolSuggestionService.SuggestFromImagesAsync(images, cancellationToken);
         return Ok(suggestion);
+    }
+
+    [HttpPost("search-by-photo")]
+    [AllowAnonymous]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<PhotoSearchResultDto>> SearchByPhoto(
+        [FromForm] List<IFormFile> images,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+    {
+        if (images is null || images.Count == 0)
+            return BadRequest(new { message = "At least one image is required." });
+
+        var result = await _toolPhotoSearchService.SearchByPhotoAsync(images, page, pageSize, cancellationToken);
+        return Ok(result);
     }
 
     [HttpPost]

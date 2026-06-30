@@ -14,7 +14,7 @@ Condition values (use the numeric condition value exactly):
 Rules:
 - Infer the tool type, brand, and model when visible.
 - Write name as a concise product title (max 200 characters).
-- Write description as a rental listing: mention key features, intended use, and visible condition notes (minimum 20 characters).
+- Write description as a rental listing: mention key features, intended uses (list all uses) , and visible condition notes (minimum 200 characters).
 - Pick the single best categoryId from the allowed list only.
 - Assess condition from visible wear in the photos.
 
