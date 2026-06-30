@@ -1,6 +1,5 @@
-using System.Net.Http.Headers;
+using System.ClientModel;
 using System.Reflection;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Ehgiz.Application.DTOs.Tools;
@@ -11,6 +10,7 @@ using Ehgiz.DAL.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenAI.Chat;
 
 namespace Ehgiz.Application.Services;
 
@@ -30,18 +30,18 @@ public class ToolSuggestionService : IToolSuggestionService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    private readonly HttpClient _httpClient;
+    private readonly ChatClient _chatClient;
     private readonly IUnitOfWork _uow;
     private readonly GitHubModelsSettings _settings;
     private readonly ILogger<ToolSuggestionService> _logger;
 
     public ToolSuggestionService(
-        HttpClient httpClient,
+        ChatClient chatClient,
         IUnitOfWork uow,
         IOptions<GitHubModelsSettings> settings,
         ILogger<ToolSuggestionService> logger)
     {
-        _httpClient = httpClient;
+        _chatClient = chatClient;
         _uow = uow;
         _settings = settings.Value;
         _logger = logger;
@@ -65,8 +65,7 @@ public class ToolSuggestionService : IToolSuggestionService
             throw new InvalidOperationException("No active categories are available.");
 
         var systemPrompt = BuildSystemPrompt(categories);
-        var imageParts = await BuildImageContentPartsAsync(images, cancellationToken);
-        var responseContent = await CallGitHubModelsAsync(systemPrompt, imageParts, cancellationToken);
+        var responseContent = await CallGitHubModelsAsync(systemPrompt, images, cancellationToken);
         var parsed = ParseModelResponse(responseContent);
 
         var category = categories.FirstOrDefault(c => c.Id == parsed.CategoryId)
@@ -134,83 +133,49 @@ public class ToolSuggestionService : IToolSuggestionService
         return reader.ReadToEnd();
     }
 
-    private static async Task<List<object>> BuildImageContentPartsAsync(
+    private async Task<string> CallGitHubModelsAsync(
+        string systemPrompt,
         IReadOnlyList<IFormFile> images,
         CancellationToken cancellationToken)
     {
-        var parts = new List<object>
+        var contentParts = new List<ChatMessageContentPart>
         {
-            new { type = "text", text = "Analyze these tool photos and return the JSON listing suggestion." }
+            ChatMessageContentPart.CreateTextPart("Analyze these tool photos and return the JSON listing suggestion.")
         };
 
         foreach (var image in images)
         {
             await using var stream = image.OpenReadStream();
-            using var memory = new MemoryStream();
-            await stream.CopyToAsync(memory, cancellationToken);
-            var base64 = Convert.ToBase64String(memory.ToArray());
-            var mimeType = image.ContentType.ToLowerInvariant();
-
-            parts.Add(new
-            {
-                type = "image_url",
-                image_url = new { url = $"data:{mimeType};base64,{base64}" }
-            });
+            var bytes = await BinaryData.FromStreamAsync(stream, cancellationToken);
+            contentParts.Add(ChatMessageContentPart.CreateImagePart(bytes, image.ContentType));
         }
 
-        return parts;
-    }
-
-    private async Task<string> CallGitHubModelsAsync(
-        string systemPrompt,
-        List<object> imageParts,
-        CancellationToken cancellationToken)
-    {
-        var requestBody = new
+        var messages = new List<ChatMessage>
         {
-            model = _settings.Model,
-            response_format = new { type = "json_object" },
-            messages = new object[]
-            {
-                new { role = "system", content = systemPrompt },
-                new { role = "user", content = imageParts }
-            }
+            new SystemChatMessage(systemPrompt),
+            new UserChatMessage(contentParts)
         };
 
-        using var request = new HttpRequestMessage(
-            HttpMethod.Post,
-            $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions");
-
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
-        request.Content = new StringContent(
-            JsonSerializer.Serialize(requestBody, JsonOptions),
-            Encoding.UTF8,
-            "application/json");
-
-        using var response = await _httpClient.SendAsync(request, cancellationToken);
-        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        var options = new ChatCompletionOptions
         {
-            _logger.LogError(
-                "GitHub Models request failed with status {StatusCode}: {ResponseBody}",
-                (int)response.StatusCode,
-                TruncateForLog(responseBody));
+            ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat()
+        };
 
+        try
+        {
+            var completion = await _chatClient.CompleteChatAsync(messages, options, cancellationToken);
+            var content = completion.Value.Content[0].Text;
+
+            if (string.IsNullOrWhiteSpace(content))
+                throw new InvalidOperationException("Image analysis returned an empty response.");
+
+            return content;
+        }
+        catch (ClientResultException ex)
+        {
+            _logger.LogError(ex, "GitHub Models request failed with status {StatusCode}", ex.Status);
             throw new InvalidOperationException("Image analysis failed. Please try again later.");
         }
-
-        using var document = JsonDocument.Parse(responseBody);
-        var content = document.RootElement
-            .GetProperty("choices")[0]
-            .GetProperty("message")
-            .GetProperty("content")
-            .GetString();
-
-        if (string.IsNullOrWhiteSpace(content))
-            throw new InvalidOperationException("Image analysis returned an empty response.");
-
-        return content;
     }
 
     private static ModelSuggestion ParseModelResponse(string content)
@@ -225,9 +190,6 @@ public class ToolSuggestionService : IToolSuggestionService
             throw new InvalidOperationException("Image analysis returned invalid JSON.", ex);
         }
     }
-
-    private static string TruncateForLog(string value, int maxLength = 500)
-        => value.Length <= maxLength ? value : value[..maxLength];
 
     private sealed class ModelSuggestion
     {
