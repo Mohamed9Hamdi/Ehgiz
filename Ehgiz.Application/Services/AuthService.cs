@@ -423,6 +423,6 @@ public class AuthService : IAuthService
 
         await _uow.SaveChangesAsync();
 
-        return new AuthTokensDTO(accessToken, rawRefreshToken, expiresAt);
+        return new AuthTokensDTO(accessToken, rawRefreshToken, expiresAt, roles);
     }
 }
