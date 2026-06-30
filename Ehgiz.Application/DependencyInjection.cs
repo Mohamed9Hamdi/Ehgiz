@@ -20,6 +20,7 @@ public static class DependencyInjection
     {
         // JWT
         services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
+        services.Configure<AiSettings>(configuration.GetSection("AI"));
 
 
         // Stripe
@@ -49,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IMessageService, MessageService>();
+        services.AddScoped<IToolAssistantService, ToolAssistantAgentService>();
 
         return services;
     }

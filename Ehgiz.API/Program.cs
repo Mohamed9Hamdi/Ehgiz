@@ -13,6 +13,7 @@ builder.Services.AddCorsPolicy();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddDalServices();
 builder.Services.AddApplicationServices(builder.Configuration);
+builder.Services.AddAiServices();
 builder.Services.AddSignalRServices();
 builder.Services.AddControllers();
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 10 * 1024 * 1024);
