@@ -825,9 +825,6 @@ public class AdminService : IAdminService
         if (filter.TransactionId.HasValue)
             query = query.Where(t => t.Id == filter.TransactionId);
 
-        if (filter.Type.HasValue)
-            query = query.Where(t => t.Type == filter.Type);
-
         var totalCount = await query.CountAsync();
 
         var items = await query

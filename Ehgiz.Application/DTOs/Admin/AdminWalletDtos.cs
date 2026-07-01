@@ -1,5 +1,3 @@
-using Ehgiz.DAL.Enums;
-
 namespace Ehgiz.Application.DTOs.Admin;
 
 public record AdminWalletDto(
@@ -25,7 +23,6 @@ public record AdminWalletTransactionDto(
 public class AdminTransactionFilterDto
 {
     public int? TransactionId { get; set; }
-    public WalletTransactionType? Type { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 50;
 }
