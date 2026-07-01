@@ -20,13 +20,6 @@ public record AdminWalletTransactionDto(
     string? Reference,
     DateTime CreatedAt);
 
-public class AdminTransactionFilterDto
-{
-    public int? TransactionId { get; set; }
-    public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 50;
-}
-
 public record RollbackTransactionRequest(string Reason);
 
 public record RollbackTransactionResultDto(

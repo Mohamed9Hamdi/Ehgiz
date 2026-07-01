@@ -235,11 +235,11 @@ public class AdminController : ControllerBase
         return Ok(ApiResponse<IEnumerable<AdminWalletDto>>.Success(result));
     }
 
-    // GET api/admin/transactions?transactionId=&page=&pageSize=
+    // GET api/admin/transactions?page=&pageSize=
     [HttpGet("transactions")]
-    public async Task<IActionResult> SearchTransactions([FromQuery] AdminTransactionFilterDto filter)
+    public async Task<IActionResult> GetAllTransactions([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
     {
-        var result = await _adminService.SearchTransactionsAsync(filter);
+        var result = await _adminService.GetAllTransactionsAsync(page, pageSize);
         return Ok(ApiResponse<PagedResult<AdminWalletTransactionDto>>.Success(result));
     }
 

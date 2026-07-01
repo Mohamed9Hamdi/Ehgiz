@@ -815,15 +815,12 @@ public class AdminService : IAdminService
 
     private const int MaxTransactionPageSize = 500;
 
-    public async Task<PagedResult<AdminWalletTransactionDto>> SearchTransactionsAsync(AdminTransactionFilterDto filter)
+    public async Task<PagedResult<AdminWalletTransactionDto>> GetAllTransactionsAsync(int page, int pageSize)
     {
-        var page = Math.Max(1, filter.Page);
-        var pageSize = Math.Clamp(filter.PageSize, 1, MaxTransactionPageSize);
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, MaxTransactionPageSize);
 
         var query = _uow.WalletTransactions.Query();
-
-        if (filter.TransactionId.HasValue)
-            query = query.Where(t => t.Id == filter.TransactionId);
 
         var totalCount = await query.CountAsync();
 

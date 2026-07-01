@@ -48,6 +48,6 @@ public interface IAdminService
 
     // Wallets & Transactions
     Task<IEnumerable<AdminWalletDto>> GetWalletsAsync();
-    Task<PagedResult<AdminWalletTransactionDto>> SearchTransactionsAsync(AdminTransactionFilterDto filter);
+    Task<PagedResult<AdminWalletTransactionDto>> GetAllTransactionsAsync(int page, int pageSize);
     Task<RollbackTransactionResultDto> RollbackTransactionAsync(int transactionId, RollbackTransactionRequest request);
 }
