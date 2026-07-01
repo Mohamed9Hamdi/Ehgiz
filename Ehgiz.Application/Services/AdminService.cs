@@ -813,8 +813,13 @@ public class AdminService : IAdminService
             .ToListAsync();
     }
 
+    private const int MaxTransactionPageSize = 500;
+
     public async Task<PagedResult<AdminWalletTransactionDto>> SearchTransactionsAsync(AdminTransactionFilterDto filter)
     {
+        var page = Math.Max(1, filter.Page);
+        var pageSize = Math.Clamp(filter.PageSize, 1, MaxTransactionPageSize);
+
         var query = _uow.WalletTransactions.Query();
 
         if (filter.UserId.HasValue)
@@ -840,8 +845,8 @@ public class AdminService : IAdminService
 
         var items = await query
             .OrderByDescending(t => t.CreatedAt)
-            .Skip((filter.Page - 1) * filter.PageSize)
-            .Take(filter.PageSize)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ProjectToType<AdminWalletTransactionDto>()
             .ToListAsync();
 
@@ -849,8 +854,8 @@ public class AdminService : IAdminService
         {
             Items = items,
             TotalCount = totalCount,
-            PageNumber = filter.Page,
-            PageSize = filter.PageSize
+            PageNumber = page,
+            PageSize = pageSize
         };
     }
 
