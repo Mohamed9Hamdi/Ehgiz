@@ -235,12 +235,12 @@ public class AdminController : ControllerBase
         return Ok(ApiResponse<IEnumerable<AdminWalletDto>>.Success(result));
     }
 
-    // GET api/admin/transactions?page=&pageSize=
+    // GET api/admin/transactions
     [HttpGet("transactions")]
-    public async Task<IActionResult> GetAllTransactions([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+    public async Task<IActionResult> GetAllTransactions()
     {
-        var result = await _adminService.GetAllTransactionsAsync(page, pageSize);
-        return Ok(ApiResponse<PagedResult<AdminWalletTransactionDto>>.Success(result));
+        var result = await _adminService.GetAllTransactionsAsync();
+        return Ok(ApiResponse<IEnumerable<AdminWalletTransactionDto>>.Success(result));
     }
 
     // POST api/admin/transactions/{id}/rollback

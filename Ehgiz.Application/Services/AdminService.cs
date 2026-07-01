@@ -813,31 +813,12 @@ public class AdminService : IAdminService
             .ToListAsync();
     }
 
-    private const int MaxTransactionPageSize = 500;
-
-    public async Task<PagedResult<AdminWalletTransactionDto>> GetAllTransactionsAsync(int page, int pageSize)
+    public async Task<IEnumerable<AdminWalletTransactionDto>> GetAllTransactionsAsync()
     {
-        page = Math.Max(1, page);
-        pageSize = Math.Clamp(pageSize, 1, MaxTransactionPageSize);
-
-        var query = _uow.WalletTransactions.Query();
-
-        var totalCount = await query.CountAsync();
-
-        var items = await query
+        return await _uow.WalletTransactions.Query()
             .OrderByDescending(t => t.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
             .ProjectToType<AdminWalletTransactionDto>()
             .ToListAsync();
-
-        return new PagedResult<AdminWalletTransactionDto>
-        {
-            Items = items,
-            TotalCount = totalCount,
-            PageNumber = page,
-            PageSize = pageSize
-        };
     }
 
     // Booking-settlement transaction types whose Reference reliably points at a BookingId.

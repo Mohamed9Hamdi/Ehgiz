@@ -1,4 +1,3 @@
-using Ehgiz.Application.Common;
 using Ehgiz.Application.DTOs.Admin;
 using Ehgiz.Application.DTOs.Bookings;
 
@@ -48,6 +47,6 @@ public interface IAdminService
 
     // Wallets & Transactions
     Task<IEnumerable<AdminWalletDto>> GetWalletsAsync();
-    Task<PagedResult<AdminWalletTransactionDto>> GetAllTransactionsAsync(int page, int pageSize);
+    Task<IEnumerable<AdminWalletTransactionDto>> GetAllTransactionsAsync();
     Task<RollbackTransactionResultDto> RollbackTransactionAsync(int transactionId, RollbackTransactionRequest request);
 }
