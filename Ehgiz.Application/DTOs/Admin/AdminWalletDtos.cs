@@ -24,7 +24,7 @@ public record AdminWalletTransactionDto(
 
 public class AdminTransactionFilterDto
 {
-    public string? Email { get; set; }
+    public int? TransactionId { get; set; }
     public WalletTransactionType? Type { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 50;

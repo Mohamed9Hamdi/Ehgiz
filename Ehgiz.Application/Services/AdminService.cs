@@ -822,11 +822,11 @@ public class AdminService : IAdminService
 
         var query = _uow.WalletTransactions.Query();
 
+        if (filter.TransactionId.HasValue)
+            query = query.Where(t => t.Id == filter.TransactionId);
+
         if (filter.Type.HasValue)
             query = query.Where(t => t.Type == filter.Type);
-
-        if (!string.IsNullOrWhiteSpace(filter.Email))
-            query = query.Where(t => t.Wallet.User.Email != null && t.Wallet.User.Email.Contains(filter.Email));
 
         var totalCount = await query.CountAsync();
 
