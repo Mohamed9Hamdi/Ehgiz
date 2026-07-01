@@ -235,7 +235,7 @@ public class AdminController : ControllerBase
         return Ok(ApiResponse<IEnumerable<AdminWalletDto>>.Success(result));
     }
 
-    // GET api/admin/transactions?searchTerm=&type=&userId=&fromDate=&toDate=&page=&pageSize=
+    // GET api/admin/transactions?email=&type=&page=&pageSize=
     [HttpGet("transactions")]
     public async Task<IActionResult> SearchTransactions([FromQuery] AdminTransactionFilterDto filter)
     {
