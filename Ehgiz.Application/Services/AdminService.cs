@@ -813,12 +813,162 @@ public class AdminService : IAdminService
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<AdminWalletTransactionDto>> GetAllTransactionsAsync()
+    public async Task<PagedResult<AdminWalletTransactionDto>> SearchTransactionsAsync(AdminTransactionFilterDto filter)
     {
-        return await _uow.WalletTransactions.Query()
+        var query = _uow.WalletTransactions.Query();
+
+        if (filter.UserId.HasValue)
+            query = query.Where(t => t.Wallet.UserId == filter.UserId);
+
+        if (filter.Type.HasValue)
+            query = query.Where(t => t.Type == filter.Type);
+
+        if (filter.FromDate.HasValue)
+            query = query.Where(t => t.CreatedAt >= filter.FromDate);
+
+        if (filter.ToDate.HasValue)
+            query = query.Where(t => t.CreatedAt <= filter.ToDate);
+
+        if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            query = query.Where(t =>
+                t.Wallet.User.FullName.Contains(filter.SearchTerm) ||
+                (t.Wallet.User.Email != null && t.Wallet.User.Email.Contains(filter.SearchTerm)) ||
+                (t.Reference != null && t.Reference.Contains(filter.SearchTerm)) ||
+                (t.Description != null && t.Description.Contains(filter.SearchTerm)));
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
             .OrderByDescending(t => t.CreatedAt)
+            .Skip((filter.Page - 1) * filter.PageSize)
+            .Take(filter.PageSize)
             .ProjectToType<AdminWalletTransactionDto>()
             .ToListAsync();
+
+        return new PagedResult<AdminWalletTransactionDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageNumber = filter.Page,
+            PageSize = filter.PageSize
+        };
+    }
+
+    // Booking-settlement transaction types whose Reference reliably points at a BookingId.
+    // (BookingDebit is excluded — its Reference holds the ToolId, set before the booking
+    // itself exists, so it cannot be traced back to a specific booking safely.)
+    private static readonly WalletTransactionType[] ReversibleTransactionTypes =
+    [
+        WalletTransactionType.EarningCredit,
+        WalletTransactionType.InsuranceRefund,
+        WalletTransactionType.BookingRefund,
+        WalletTransactionType.LateFeeCredit,
+        WalletTransactionType.PartialRefund,
+        WalletTransactionType.DisputeCredit
+    ];
+
+    public async Task<RollbackTransactionResultDto> RollbackTransactionAsync(int transactionId, RollbackTransactionRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            throw new InvalidOperationException("A reason is required to roll back a transaction.");
+
+        var original = await _uow.WalletTransactions.Query()
+            .Include(t => t.Wallet)
+            .FirstOrDefaultAsync(t => t.Id == transactionId)
+            ?? throw new KeyNotFoundException($"Transaction {transactionId} not found.");
+
+        if (!ReversibleTransactionTypes.Contains(original.Type))
+            throw new InvalidOperationException(
+                $"Transactions of type '{original.Type}' cannot be rolled back here — only booking settlement/refund credits linked to a specific booking can be reversed this way.");
+
+        if (string.IsNullOrWhiteSpace(original.Reference) || !int.TryParse(original.Reference, out var bookingId))
+            throw new InvalidOperationException("This transaction has no linked booking and cannot be rolled back automatically.");
+
+        var alreadyReversed = await _uow.WalletTransactions.Query()
+            .AnyAsync(t => t.Type == WalletTransactionType.AdminReversal && t.Reference == $"reversal:{original.Id}");
+        if (alreadyReversed)
+            throw new InvalidOperationException("This transaction has already been rolled back.");
+
+        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId)
+            ?? throw new KeyNotFoundException($"Booking {bookingId} linked to this transaction was not found.");
+
+        var receiverWallet = original.Wallet;
+        var receiverUserId = receiverWallet.UserId;
+
+        if (receiverUserId != booking.RenterId && receiverUserId != booking.Tool.OwnerId)
+            throw new InvalidOperationException("This transaction's wallet is not a party to the linked booking.");
+
+        var senderUserId = receiverUserId == booking.RenterId ? booking.Tool.OwnerId : booking.RenterId;
+        var amount = Math.Abs(original.Amount);
+
+        if (original.Amount > 0 && receiverWallet.Balance < amount)
+            throw new InvalidOperationException("The receiving wallet does not have enough balance to reverse this transaction.");
+
+        var senderWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(senderUserId);
+
+        await using var transaction = await _uow.BeginTransactionAsync();
+
+        if (original.Amount > 0)
+        {
+            receiverWallet.Balance -= amount;
+            senderWallet.Balance += amount;
+        }
+        else
+        {
+            senderWallet.Balance -= amount;
+            receiverWallet.Balance += amount;
+        }
+
+        receiverWallet.UpdatedAt = DateTime.UtcNow;
+        senderWallet.UpdatedAt = DateTime.UtcNow;
+
+        await _uow.WalletTransactions.AddAsync(new WalletTransaction
+        {
+            WalletId = receiverWallet.Id,
+            Amount = -original.Amount,
+            Type = WalletTransactionType.AdminReversal,
+            Reference = $"reversal:{original.Id}",
+            Description = $"Admin rollback of transaction #{original.Id}: {request.Reason}",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await _uow.WalletTransactions.AddAsync(new WalletTransaction
+        {
+            WalletId = senderWallet.Id,
+            Amount = original.Amount,
+            Type = WalletTransactionType.AdminReversal,
+            Reference = $"reversal:{original.Id}",
+            Description = $"Admin rollback of transaction #{original.Id}: {request.Reason}",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await _uow.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = senderUserId,
+            Title = "Transaction Reversed",
+            Message = $"An admin has reversed transaction #{original.Id} related to booking #{bookingId}. {amount:C} has been returned to your wallet.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = receiverUserId,
+            Title = "Transaction Reversed",
+            Message = $"An admin has reversed transaction #{original.Id} related to booking #{bookingId}. {amount:C} has been deducted from your wallet.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
+
+        return new RollbackTransactionResultDto(
+            OriginalTransactionId: original.Id,
+            SenderUserId: senderUserId,
+            ReceiverUserId: receiverUserId,
+            Amount: amount,
+            Reason: request.Reason,
+            CreatedAt: DateTime.UtcNow);
     }
 
     // ── Private Helpers ─────────────────────────────────────────────────────

@@ -11,5 +11,6 @@ public enum WalletTransactionType
     LateFeeDebit    = 7,
     LateFeeCredit   = 8,
     PartialRefund   = 9,
-    DisputeCredit   = 10
+    DisputeCredit   = 10,
+    AdminReversal   = 11
 }

@@ -235,12 +235,20 @@ public class AdminController : ControllerBase
         return Ok(ApiResponse<IEnumerable<AdminWalletDto>>.Success(result));
     }
 
-    // GET api/admin/transactions
+    // GET api/admin/transactions?searchTerm=&type=&userId=&fromDate=&toDate=&page=&pageSize=
     [HttpGet("transactions")]
-    public async Task<IActionResult> GetAllTransactions()
+    public async Task<IActionResult> SearchTransactions([FromQuery] AdminTransactionFilterDto filter)
     {
-        var result = await _adminService.GetAllTransactionsAsync();
-        return Ok(ApiResponse<IEnumerable<AdminWalletTransactionDto>>.Success(result));
+        var result = await _adminService.SearchTransactionsAsync(filter);
+        return Ok(ApiResponse<PagedResult<AdminWalletTransactionDto>>.Success(result));
+    }
+
+    // POST api/admin/transactions/{id}/rollback
+    [HttpPost("transactions/{id:int}/rollback")]
+    public async Task<IActionResult> RollbackTransaction(int id, [FromBody] RollbackTransactionRequest dto)
+    {
+        var result = await _adminService.RollbackTransactionAsync(id, dto);
+        return Ok(ApiResponse<RollbackTransactionResultDto>.Success(result, $"Transaction #{id} has been rolled back."));
     }
 
     // ── Platform Settings ─────────────────────────────────────────────────────
