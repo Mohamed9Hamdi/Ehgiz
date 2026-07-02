@@ -10,4 +10,7 @@ public interface IAuthService
     Task LogoutSessionAsync(string rawRefreshToken);
     Task<VerifyEmailResultDTO> VerifyEmailAsync(VerifyEmailRequestDTO dto);
     Task<ResendVerificationResultDTO> ResendVerificationAsync(ResendVerificationRequestDTO dto);
+    Task<ForgotPasswordResultDTO> ForgotPasswordAsync(ForgotPasswordRequestDTO dto);
+    Task<ResendResetCodeResultDTO> ResendResetCodeAsync(ResendResetCodeRequestDTO dto);
+    Task<ResetPasswordResultDTO> ResetPasswordAsync(ResetPasswordRequestDTO dto);
 }

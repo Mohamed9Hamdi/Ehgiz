@@ -8,6 +8,10 @@ using Ehgiz.Application.Services;
 using Ehgiz.Application.Settings;
 using Ehgiz.Application.Interfaces;
 using Stripe;
+using OpenAI;
+using OpenAI.Chat;
+using System.ClientModel;
+using Microsoft.Extensions.Options;
 using ReviewService = Ehgiz.Application.Services.ReviewService;
 
 namespace Ehgiz.Application;
@@ -30,6 +34,21 @@ public static class DependencyInjection
 
         // Cloudinary
         services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
+
+        services.Configure<GitHubModelsSettings>(configuration.GetSection("GitHubModels"));
+        services.AddSingleton(sp =>
+        {
+            var settings = sp.GetRequiredService<IOptions<GitHubModelsSettings>>().Value;
+            return new ChatClient(
+                model: settings.Model,
+                credential: new ApiKeyCredential(settings.ApiKey ?? string.Empty),
+                options: new OpenAIClientOptions
+                {
+                    Endpoint = new Uri(settings.BaseUrl.TrimEnd('/'))
+                });
+        });
+        services.AddScoped<IToolSuggestionService, ToolSuggestionService>();
+        services.AddScoped<IToolPhotoSearchService, ToolPhotoSearchService>();
         services.AddScoped<ITokenService, Ehgiz.Application.Services.TokenService>();
         services.AddScoped<IEmailService, SendGridEmailService>();
         services.AddScoped<IAuthService, AuthService>();

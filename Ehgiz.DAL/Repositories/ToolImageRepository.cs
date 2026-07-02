@@ -7,11 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class ToolImageRepository : Repository<ToolImage>, IToolImageRepository
 {
-    private readonly EhgizDbContext _context;
-
     public ToolImageRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<ToolImage?> GetByIdWithToolAsync(int id)

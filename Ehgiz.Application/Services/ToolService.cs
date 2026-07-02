@@ -6,6 +6,7 @@ using Ehgiz.DAL.Interfaces;
 using Mapster;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace Ehgiz.Application.Services;
@@ -25,13 +26,40 @@ public class ToolService : IToolService
 
     public async Task<PagedResult<ToolDto>> GetAllAsync(ToolFilterDto filter)
     {
-        var (items, totalCount) = await _uow.Tools.GetFilteredAsync(
-            filter.CategoryId, filter.Location, filter.MinPrice, filter.MaxPrice,
-            filter.IsAvailable, filter.SearchTerm, filter.Page, filter.PageSize);
+        var query = _uow.Tools.Query();
+
+        if (filter.CategoryId.HasValue)
+            query = query.Where(t => t.CategoryId == filter.CategoryId);
+
+        if (!string.IsNullOrWhiteSpace(filter.Location))
+            query = query.Where(t => t.Location!.Contains(filter.Location));
+
+        if (filter.MinPrice.HasValue)
+            query = query.Where(t => t.PricePerDay >= filter.MinPrice);
+
+        if (filter.MaxPrice.HasValue)
+            query = query.Where(t => t.PricePerDay <= filter.MaxPrice);
+
+        if (filter.IsAvailable.HasValue)
+            query = query.Where(t => t.IsAvailable == filter.IsAvailable);
+
+        if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            query = query.Where(t =>
+                t.Name.Contains(filter.SearchTerm) ||
+                (t.Description != null && t.Description.Contains(filter.SearchTerm)));
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(t => t.CreatedAt)
+            .Skip((filter.Page - 1) * filter.PageSize)
+            .Take(filter.PageSize)
+            .ProjectToType<ToolDto>()
+            .ToListAsync();
 
         return new PagedResult<ToolDto>
         {
-            Items = items.Adapt<List<ToolDto>>(),
+            Items = items,
             TotalCount = totalCount,
             PageNumber = filter.Page,
             PageSize = filter.PageSize
@@ -40,10 +68,11 @@ public class ToolService : IToolService
 
     public async Task<ToolDto> GetByIdAsync(int id)
     {
-        var tool = await _uow.Tools.GetByIdWithDetailsAsync(id)
+        return await _uow.Tools.Query()
+            .Where(t => t.Id == id)
+            .ProjectToType<ToolDto>()
+            .FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException($"Tool {id} not found");
-
-        return tool.Adapt<ToolDto>();
     }
 
     public async Task<ToolDto> CreateAsync(CreateToolDto dto, int ownerId)
@@ -136,7 +165,9 @@ public class ToolService : IToolService
 
     public async Task<List<ToolDto>> GetByOwnerAsync(int ownerId)
     {
-        var tools = await _uow.Tools.GetByOwnerAsync(ownerId);
-        return tools.Adapt<List<ToolDto>>();
+        return await _uow.Tools.Query()
+            .Where(t => t.OwnerId == ownerId)
+            .ProjectToType<ToolDto>()
+            .ToListAsync();
     }
 }

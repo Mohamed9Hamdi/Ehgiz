@@ -43,7 +43,7 @@ public class WalletController : ControllerBase
     [HttpPost("topup")]
     public async Task<IActionResult> InitiateTopUp([FromBody] TopUpRequest dto)
     {
-        var returnUrl = $"http://localhost:4200/wallet/topup/return";
+        var returnUrl = $"http://localhost:4200//wallet/topup/return";
 
         var result = await _walletService.InitiateTopUpAsync(CurrentUserId, dto, returnUrl);
         return Ok(ApiResponse<TopUpResponse>.Success(result,

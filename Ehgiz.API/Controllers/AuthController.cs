@@ -116,6 +116,51 @@ public class AuthController : ControllerBase
         return Ok(ApiResponse<object>.Success(null!, result.Message));
     }
 
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDTO dto)
+    {
+        var result = await _authService.ForgotPasswordAsync(dto);
+
+        if (!result.Succeeded)
+        {
+            return BadRequest(ApiResponse<object>.Fail(
+                result.Message,
+                result.Errors.ToList()));
+        }
+
+        return Ok(ApiResponse<object>.Success(null!, result.Message));
+    }
+
+    [HttpPost("resend-reset-code")]
+    public async Task<IActionResult> ResendResetCode([FromBody] ResendResetCodeRequestDTO dto)
+    {
+        var result = await _authService.ResendResetCodeAsync(dto);
+
+        if (!result.Succeeded)
+        {
+            return BadRequest(ApiResponse<object>.Fail(
+                result.Message,
+                result.Errors.ToList()));
+        }
+
+        return Ok(ApiResponse<object>.Success(null!, result.Message));
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDTO dto)
+    {
+        var result = await _authService.ResetPasswordAsync(dto);
+
+        if (!result.Succeeded)
+        {
+            return BadRequest(ApiResponse<object>.Fail(
+                result.Message,
+                result.Errors.ToList()));
+        }
+
+        return Ok(ApiResponse<object>.Success(null!, result.Message));
+    }
+
     [Authorize]
     [HttpGet("me")]
     public async Task<IActionResult> GetProfile()

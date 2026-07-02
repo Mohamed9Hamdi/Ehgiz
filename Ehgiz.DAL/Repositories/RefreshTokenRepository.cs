@@ -7,11 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class RefreshTokenRepository : Repository<RefreshToken>, IRefreshTokenRepository
 {
-    private readonly EhgizDbContext _context;
-
     public RefreshTokenRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<RefreshToken?> GetByHashAsync(string tokenHash)
@@ -25,5 +22,16 @@ public class RefreshTokenRepository : Repository<RefreshToken>, IRefreshTokenRep
         return await _context.RefreshTokens
             .Include(rt => rt.User)
             .FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
+    }
+
+    public async Task RevokeAllActiveByUserIdAsync(int userId)
+    {
+        var now = DateTime.UtcNow;
+        var activeTokens = await _context.RefreshTokens
+            .Where(rt => rt.UserId == userId && rt.RevokedAt == null && rt.ExpiresAt > now)
+            .ToListAsync();
+
+        foreach (var token in activeTokens)
+            token.RevokedAt = now;
     }
 }

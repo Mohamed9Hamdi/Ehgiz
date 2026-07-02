@@ -3,7 +3,7 @@ using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Interfaces;
 using Ehgiz.DAL.Interfaces.Repositories;
 using Ehgiz.DAL.Repositories;
-using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.EntityFrameworkCore;
 
 namespace Ehgiz.DAL.UnitOfWork;
 
@@ -28,7 +28,8 @@ public class UnitOfWork : IUnitOfWork
         IHandoverRepository handovers,
         IUserConnectionRepository userConnections,
         IRefreshTokenRepository refreshTokens,
-        IEmailVerificationCodeRepository emailVerificationCodes)
+        IEmailVerificationCodeRepository emailVerificationCodes,
+        IPasswordResetCodeRepository passwordResetCodes)
     {
         _context = context;
         WalletTransactions = new Repository<WalletTransaction>(context);
@@ -49,6 +50,7 @@ public class UnitOfWork : IUnitOfWork
         UserConnections = userConnections;
         RefreshTokens = refreshTokens;
         EmailVerificationCodes = emailVerificationCodes;
+        PasswordResetCodes = passwordResetCodes;
         Wallets = wallets;
         Handovers = handovers;
     }
@@ -93,11 +95,33 @@ public class UnitOfWork : IUnitOfWork
 
     public IRepository<SystemSetting> SystemSettings { get; }
 
+    public IPasswordResetCodeRepository PasswordResetCodes { get; }
+
     public Task<int> SaveChangesAsync() =>
         _context.SaveChangesAsync();
 
-    public Task<IDbContextTransaction> BeginTransactionAsync() =>
-        _context.Database.BeginTransactionAsync();
+    public async Task ExecuteInTransactionAsync(Func<Task> operation)
+    {
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await operation();
+            await transaction.CommitAsync();
+        });
+    }
+
+    public async Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation)
+    {
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            var result = await operation();
+            await transaction.CommitAsync();
+            return result;
+        });
+    }
 
     public ValueTask DisposeAsync() => _context.DisposeAsync();
 }

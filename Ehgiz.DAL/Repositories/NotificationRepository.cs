@@ -7,29 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class NotificationRepository : Repository<Notification>, INotificationRepository
 {
-    private readonly EhgizDbContext _context;
-
     public NotificationRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
-    }
-
-    public async Task<IReadOnlyList<Notification>> GetByUserIdAsync(int userId)
-    {
-        return await _context.Notifications
-            .Where(n => n.UserId == userId)
-            .OrderByDescending(n => n.CreatedAt)
-            .AsNoTracking()
-            .ToListAsync();
-    }
-
-    public async Task<IReadOnlyList<Notification>> GetUnreadByUserIdAsync(int userId)
-    {
-        return await _context.Notifications
-            .Where(n => n.UserId == userId && !n.IsRead)
-            .OrderByDescending(n => n.CreatedAt)
-            .AsNoTracking()
-            .ToListAsync();
     }
 
     public async Task<int> GetUnreadCountAsync(int userId)

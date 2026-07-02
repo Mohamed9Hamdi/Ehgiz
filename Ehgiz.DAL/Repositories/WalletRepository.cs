@@ -32,8 +32,4 @@ public class WalletRepository : Repository<Wallet>, IWalletRepository
         return wallet;
     }
 
-    public Task<Wallet?> GetByUserIdWithTransactionsAsync(int userId) =>
-        _context.Wallets
-            .Include(w => w.Transactions.OrderByDescending(t => t.CreatedAt))
-            .FirstOrDefaultAsync(w => w.UserId == userId);
 }

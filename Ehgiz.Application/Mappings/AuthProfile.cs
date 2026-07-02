@@ -16,7 +16,8 @@ public class AuthProfile : IRegister
             .Map(dest => dest.IsActive, _ => true);
 
         config.NewConfig<AuthTokensDTO, LoginResponseDTO>()
-            .Map(dest => dest.ExpiresAt, src => src.AccessTokenExpiresAt);
+            .Map(dest => dest.ExpiresAt, src => src.AccessTokenExpiresAt)
+            .Map(dest => dest.Roles, src => src.Roles);
 
         config.NewConfig<ApplicationUser, UserProfileDTO>()
             .Map(dest => dest.Roles, _ => Array.Empty<string>());

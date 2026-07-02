@@ -8,23 +8,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class MessageRepository : Repository<Message>, IMessageRepository
 {
-    private readonly EhgizDbContext _context;
-
     public MessageRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
-    }
-
-    public async Task<IReadOnlyList<Message>> GetByConversationIdAsync(int conversationId, int page, int pageSize)
-    {
-        return await _context.Messages
-            .Where(m => m.ConversationId == conversationId)
-            .Include(m => m.Sender)
-            .OrderByDescending(m => m.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .AsNoTracking()
-            .ToListAsync();
     }
 
     public async Task MarkConversationAsReadAsync(int conversationId, int readerUserId)

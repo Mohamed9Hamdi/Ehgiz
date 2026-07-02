@@ -1,9 +1,9 @@
 using Ehgiz.Application.DTOs.Notifications;
 using Ehgiz.Application.DTOs.Review;
 using Ehgiz.Application.Interfaces;
-using Ehgiz.DAL.Data;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
+using Ehgiz.DAL.Interfaces;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
@@ -12,49 +12,35 @@ namespace Ehgiz.Application.Services;
 
 public class ReviewService : IReviewService
 {
-    private readonly EhgizDbContext _context;
+    private readonly IUnitOfWork _uow;
     private readonly INotificationService _notificationService;
 
-    public ReviewService(EhgizDbContext context, INotificationService notificationService)
+    public ReviewService(IUnitOfWork uow, INotificationService notificationService)
     {
-        _context = context;
+        _uow = uow;
         _notificationService = notificationService;
     }
 
     public async Task<List<ReviewDto>> GetByToolAsync(int toolId)
     {
-        var toolExists = await _context.Tools.AnyAsync(t => t.Id == toolId);
-
+        var toolExists = await _uow.Tools.CountAsync(t => t.Id == toolId) > 0;
         if (!toolExists)
             throw new KeyNotFoundException($"Tool with id {toolId} not found");
 
-        var reviews = await _context.Reviews
-            .Include(r => r.Booking)
-                .ThenInclude(b => b.Tool)
-            .Include(r => r.Booking)
-                .ThenInclude(b => b.Renter)
-            .AsNoTracking()
+        return await _uow.Reviews.Query()
             .Where(r => r.Booking.ToolId == toolId)
             .OrderByDescending(r => r.CreatedAt)
+            .ProjectToType<ReviewDto>()
             .ToListAsync();
-
-        return reviews.Adapt<List<ReviewDto>>();
     }
 
     public async Task<ReviewDto> GetByIdAsync(int id)
     {
-        var review = await _context.Reviews
-            .Include(r => r.Booking)
-                .ThenInclude(b => b.Tool)
-            .Include(r => r.Booking)
-                .ThenInclude(b => b.Renter)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Id == id);
-
-        if (review == null)
-            throw new KeyNotFoundException($"Review with id {id} not found");
-
-        return review.Adapt<ReviewDto>();
+        return await _uow.Reviews.Query()
+            .Where(r => r.Id == id)
+            .ProjectToType<ReviewDto>()
+            .FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException($"Review with id {id} not found");
     }
 
     public async Task<ReviewDto> CreateAsync(CreateReviewDto dto, int renterId)
@@ -62,33 +48,25 @@ public class ReviewService : IReviewService
         if (dto.Rating is < 1 or > 5)
             throw new ValidationException("Rating must be between 1 and 5");
 
-        var booking = await _context.Bookings
-            .Include(b => b.Tool)
-            .FirstOrDefaultAsync(b => b.Id == dto.BookingId);
-
-        if (booking == null)
-            throw new KeyNotFoundException($"Booking {dto.BookingId} not found");
+        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(dto.BookingId)
+            ?? throw new KeyNotFoundException($"Booking {dto.BookingId} not found");
 
         if (booking.RenterId != renterId)
             throw new UnauthorizedAccessException("You can only review your own bookings");
 
-        // Allow reviews only for completed bookings or disputes resolved in renter's favor
         var isCompleted = booking.Status == BookingStatus.Completed;
         var isDisputeResolvedForRenter = booking.Status == BookingStatus.Cancelled
                                          && !string.IsNullOrEmpty(booking.AdminResolutionNotes);
         if (!isCompleted && !isDisputeResolvedForRenter)
             throw new ValidationException("Reviews can only be left on completed or dispute-resolved bookings");
 
-        var alreadyReviewed = await _context.Reviews
-            .AnyAsync(r => r.BookingId == dto.BookingId);
-
+        var alreadyReviewed = await _uow.Reviews.ExistsForBookingAsync(dto.BookingId);
         if (alreadyReviewed)
             throw new ValidationException("You already reviewed this booking");
 
         var review = dto.Adapt<Review>();
-
-        _context.Reviews.Add(review);
-        await _context.SaveChangesAsync();
+        await _uow.Reviews.AddAsync(review);
+        await _uow.SaveChangesAsync();
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -104,28 +82,24 @@ public class ReviewService : IReviewService
 
     public async Task DeleteAsync(int id, int renterId)
     {
-        var review = await _context.Reviews
-            .Include(r => r.Booking)
-            .FirstOrDefaultAsync(r => r.Id == id);
+        var review = await _uow.Reviews.GetByIdAsync(id)
+            ?? throw new KeyNotFoundException($"Review {id} not found");
 
-        if (review == null)
-            throw new KeyNotFoundException($"Review {id} not found");
+        var bookingRenterId = await _uow.Bookings.Query()
+            .Where(b => b.Id == review.BookingId)
+            .Select(b => b.RenterId)
+            .FirstOrDefaultAsync();
 
-        if (review.Booking.RenterId != renterId)
+        if (bookingRenterId != renterId)
             throw new UnauthorizedAccessException("You can only delete your own reviews");
 
-        _context.Reviews.Remove(review);
-        await _context.SaveChangesAsync();
+        _uow.Reviews.Remove(review);
+        await _uow.SaveChangesAsync();
     }
 
     public async Task<double> GetAverageRatingAsync(int toolId)
     {
-        var ratings = await _context.Reviews
-            .Include(r => r.Booking)
-            .Where(r => r.Booking.ToolId == toolId)
-            .Select(r => r.Rating)
-            .ToListAsync();
-
+        var ratings = await _uow.Reviews.GetRatingsByToolAsync(toolId);
         return ratings.Count == 0 ? 0 : Math.Round(ratings.Average(), 1);
     }
 }

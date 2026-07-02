@@ -63,8 +63,7 @@ public class PaymentService : IPaymentService
 
     public async Task<PaymentDto?> GetPaymentByBookingAsync(int bookingId)
     {
-        var all = await _uow.Payments.GetAllAsync();
-        var payment = all.FirstOrDefault(p => p.BookingId == bookingId);
+        var payment = await _uow.Payments.GetByBookingIdAsync(bookingId);
         if (payment is null) return null;
 
         return new PaymentDto(

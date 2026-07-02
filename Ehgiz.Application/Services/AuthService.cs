@@ -214,6 +214,119 @@ public class AuthService : IAuthService
             "Verification code sent.");
     }
 
+    public async Task<ForgotPasswordResultDTO> ForgotPasswordAsync(ForgotPasswordRequestDTO dto)
+    {
+        var user = await _userManager.FindByEmailAsync(dto.Email);
+        if (user is null)
+        {
+            return new ForgotPasswordResultDTO(
+                true,
+                "If a verified account exists, a password reset code was sent.",
+                []);
+        }
+
+        if (!user.EmailConfirmed)
+        {
+            return new ForgotPasswordResultDTO(
+                false,
+                "Please verify your email before resetting your password.",
+                []);
+        }
+
+        await InvalidateActiveResetCodesAsync(user.Id);
+        await CreateAndSendPasswordResetCodeAsync(user);
+
+        return new ForgotPasswordResultDTO(
+            true,
+            "Password reset code sent.",
+            []);
+    }
+
+    public async Task<ResendResetCodeResultDTO> ResendResetCodeAsync(ResendResetCodeRequestDTO dto)
+    {
+        var user = await _userManager.FindByEmailAsync(dto.Email);
+        if (user is null)
+        {
+            return new ResendResetCodeResultDTO(
+                true,
+                "If a verified account exists, a password reset code was sent.",
+                []);
+        }
+
+        if (!user.EmailConfirmed)
+        {
+            return new ResendResetCodeResultDTO(
+                false,
+                "Please verify your email before resetting your password.",
+                []);
+        }
+
+        await InvalidateActiveResetCodesAsync(user.Id);
+        await CreateAndSendPasswordResetCodeAsync(user);
+
+        return new ResendResetCodeResultDTO(
+            true,
+            "Reset code sent.",
+            []);
+    }
+
+    public async Task<ResetPasswordResultDTO> ResetPasswordAsync(ResetPasswordRequestDTO dto)
+    {
+        var user = await _userManager.FindByEmailAsync(dto.Email);
+        if (user is null)
+        {
+            return new ResetPasswordResultDTO(
+                false,
+                "Invalid or expired reset code.",
+                []);
+        }
+
+        var hash = _tokenService.HashToken(dto.Code.Trim());
+        var stored = await _uow.PasswordResetCodes.GetByUserAndHashAsync(user.Id, hash);
+
+        if (stored is null || !stored.IsActive)
+        {
+            return new ResetPasswordResultDTO(
+                false,
+                "Invalid or expired reset code.",
+                []);
+        }
+
+        var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await _userManager.ResetPasswordAsync(user, resetToken, dto.NewPassword);
+        if (!result.Succeeded)
+        {
+            return new ResetPasswordResultDTO(
+                false,
+                "Password reset failed.",
+                result.Errors.Select(e => e.Description));
+        }
+
+        stored.UsedAt = DateTime.UtcNow;
+        await _uow.RefreshTokens.RevokeAllActiveByUserIdAsync(user.Id);
+        await _uow.SaveChangesAsync();
+
+        try
+        {
+            await _notificationService.CreateAsync(new CreateNotificationDto
+            {
+                UserId = user.Id,
+                Title = "Password Changed",
+                Message = "Your password was reset successfully.",
+                Type = NotificationType.System
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to create password reset notification for user {UserId}", user.Id);
+        }
+
+        return new ResetPasswordResultDTO(
+            true,
+            "Password reset successfully. You can now log in.",
+            []);
+    }
+
     public async Task<AuthTokensDTO?> RefreshSessionAsync(string rawRefreshToken)
     {
         var hash = _tokenService.HashToken(rawRefreshToken);
@@ -256,6 +369,33 @@ public class AuthService : IAuthService
         await _emailService.SendVerificationCodeAsync(user.Email!, code);
     }
 
+    private async Task CreateAndSendPasswordResetCodeAsync(ApplicationUser user)
+    {
+        var code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+
+        await _uow.PasswordResetCodes.AddAsync(new PasswordResetCode
+        {
+            UserId = user.Id,
+            CodeHash = _tokenService.HashToken(code),
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(_sendGridSettings.VerificationCodeMins)
+        });
+
+        await _uow.SaveChangesAsync();
+        await _emailService.SendPasswordResetCodeAsync(user.Email!, code);
+    }
+
+    private async Task InvalidateActiveResetCodesAsync(int userId)
+    {
+        var activeCodes = await _uow.PasswordResetCodes.GetActiveByUserIdAsync(userId);
+
+        foreach (var code in activeCodes)
+            code.UsedAt = DateTime.UtcNow;
+
+        if (activeCodes.Count > 0)
+            await _uow.SaveChangesAsync();
+    }
+
     private async Task InvalidateActiveCodesAsync(int userId)
     {
         var activeCodes = await _uow.EmailVerificationCodes.GetActiveByUserIdAsync(userId);
@@ -283,6 +423,6 @@ public class AuthService : IAuthService
 
         await _uow.SaveChangesAsync();
 
-        return new AuthTokensDTO(accessToken, rawRefreshToken, expiresAt);
+        return new AuthTokensDTO(accessToken, rawRefreshToken, expiresAt, roles);
     }
 }

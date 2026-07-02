@@ -5,6 +5,7 @@ using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
 using Mapster;
+using Microsoft.EntityFrameworkCore;
 
 namespace Ehgiz.Application.Services;
 
@@ -75,8 +76,13 @@ public class MessageService : IMessageService
         if (conversation.User1Id != userId && conversation.User2Id != userId)
             throw new UnauthorizedAccessException("You are not a participant in this conversation.");
 
-        var messages = await _uow.Messages.GetByConversationIdAsync(conversationId, page, pageSize);
-        return messages.Adapt<List<MessageDto>>();
+        return await _uow.Messages.Query()
+            .Where(m => m.ConversationId == conversationId)
+            .OrderByDescending(m => m.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ProjectToType<MessageDto>()
+            .ToListAsync();
     }
 
     public async Task<MessageDto> SendMessageAsync(int conversationId, int senderId, SendMessageDto dto)
@@ -102,8 +108,9 @@ public class MessageService : IMessageService
 
         await _uow.SaveChangesAsync();
 
-        var sender = await _uow.Users.GetByIdAsync(senderId);
-        message.Sender = sender!;
+        var sender = await _uow.Users.GetByIdAsync(senderId)
+            ?? throw new KeyNotFoundException($"Sender user {senderId} not found.");
+        message.Sender = sender;
 
         var result = message.Adapt<MessageDto>();
 
@@ -115,7 +122,7 @@ public class MessageService : IMessageService
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
             UserId = recipientId,
-            Title = $"{sender!.FullName} sent you a message",
+            Title = $"{sender.FullName} sent you a message",
             Message = preview,
             Type = NotificationType.Message,
             Url = $"/conversations/{conversationId}"

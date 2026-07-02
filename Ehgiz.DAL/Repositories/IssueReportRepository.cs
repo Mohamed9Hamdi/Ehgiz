@@ -7,22 +7,8 @@ namespace Ehgiz.DAL.Repositories;
 
 public class IssueReportRepository : Repository<IssueReport>, IIssueReportRepository
 {
-    private readonly EhgizDbContext _context;
-
     public IssueReportRepository(EhgizDbContext context) : base(context)
     {
-        _context = context;
     }
 
-    public async Task<IReadOnlyList<IssueReport>> GetAllWithDetailsAsync()
-        => await _context.IssueReports
-            .Include(ir => ir.Reporter)
-            .AsNoTracking()
-            .OrderByDescending(ir => ir.CreatedAt)
-            .ToListAsync();
-
-    public async Task<IssueReport?> GetByIdWithDetailsAsync(int id)
-        => await _context.IssueReports
-            .Include(ir => ir.Reporter)
-            .FirstOrDefaultAsync(ir => ir.Id == id);
 }

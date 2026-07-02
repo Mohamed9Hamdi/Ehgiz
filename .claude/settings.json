@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet user-secrets *)",
+      "Bash(git merge *)",
+      "Bash(dotnet test *)",
+      "Bash(dotnet list *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git fetch *)",
+      "Bash(git rev-list *)",
+      "Bash(git check-ignore *)",
+      "Bash(rm -f .claude/settings.json.local.bak && git add .claude/settings.json && git status --short | grep -i claude)",
+      "Bash(dotnet --version)",
+      "Bash(dotnet ef *)"
+    ],
+    "additionalDirectories": [
+      "D:\\github\\Ehgiz_back_end\\.claude"
+    ]
+  }
+}

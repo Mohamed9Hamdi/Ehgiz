@@ -229,6 +229,7 @@ rcf/
 *.env
 wwwroot/
 uploads/
+*.cursor
 # Windows Store app package directories and files
 AppPackages/
 BundleArtifacts/

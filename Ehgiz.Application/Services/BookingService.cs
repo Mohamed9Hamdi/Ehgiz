@@ -5,7 +5,7 @@ using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
-using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 
 namespace Ehgiz.Application.Services;
 
@@ -59,23 +59,6 @@ public class BookingService : IBookingService
             throw new InvalidOperationException(
                 $"Insufficient wallet balance. Required: {totalCharged:C}, Available: {wallet.Balance:C}");
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        // Deduct from wallet → hold in escrow
-        wallet.Balance -= totalCharged;
-        wallet.HeldBalance += totalCharged;
-        wallet.UpdatedAt = DateTime.UtcNow;
-
-        await _uow.WalletTransactions.AddAsync(new WalletTransaction
-        {
-            WalletId = wallet.Id,
-            Amount = -totalCharged,
-            Type = WalletTransactionType.BookingDebit,
-            Reference = dto.ToolId.ToString(),
-            Description = $"Booking for '{tool.Name}' ({days} days) + insurance",
-            CreatedAt = DateTime.UtcNow
-        });
-
         var booking = new Booking
         {
             ToolId = dto.ToolId,
@@ -91,9 +74,26 @@ public class BookingService : IBookingService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _uow.Bookings.AddAsync(booking);
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
+        await _uow.ExecuteInTransactionAsync(async () =>
+        {
+            // Deduct from wallet → hold in escrow
+            wallet.Balance -= totalCharged;
+            wallet.HeldBalance += totalCharged;
+            wallet.UpdatedAt = DateTime.UtcNow;
+
+            await _uow.WalletTransactions.AddAsync(new WalletTransaction
+            {
+                WalletId = wallet.Id,
+                Amount = -totalCharged,
+                Type = WalletTransactionType.BookingDebit,
+                Reference = dto.ToolId.ToString(),
+                Description = $"Booking for '{tool.Name}' ({days} days) + insurance",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _uow.Bookings.AddAsync(booking);
+            await _uow.SaveChangesAsync();
+        });
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -150,22 +150,22 @@ public class BookingService : IBookingService
         if (booking.Status != BookingStatus.Pending)
             throw new InvalidOperationException("Only pending bookings can be rejected.");
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        // Full refund
-        await RefundRenterAsync(booking);
-
-        booking.Status = BookingStatus.Rejected;
-        booking.CompletedAt = DateTime.UtcNow;
-
-        if (booking.Payment != null)
+        await _uow.ExecuteInTransactionAsync(async () =>
         {
-            booking.Payment.PaymentStatus = PaymentStatus.Refunded;
-            booking.Payment.EscrowStatus = EscrowStatus.Refunded;
-        }
+            // Full refund
+            await RefundRenterAsync(booking);
 
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
+            booking.Status = BookingStatus.Rejected;
+            booking.CompletedAt = DateTime.UtcNow;
+
+            if (booking.Payment != null)
+            {
+                booking.Payment.PaymentStatus = PaymentStatus.Refunded;
+                booking.Payment.EscrowStatus = EscrowStatus.Refunded;
+            }
+
+            await _uow.SaveChangesAsync();
+        });
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -189,22 +189,22 @@ public class BookingService : IBookingService
         if (booking.Status != BookingStatus.Pending && booking.Status != BookingStatus.Accepted)
             throw new InvalidOperationException("Only pending or accepted bookings can be cancelled.");
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        // Full refund
-        await RefundRenterAsync(booking);
-
-        booking.Status = BookingStatus.Cancelled;
-        booking.CompletedAt = DateTime.UtcNow;
-
-        if (booking.Payment != null)
+        await _uow.ExecuteInTransactionAsync(async () =>
         {
-            booking.Payment.PaymentStatus = PaymentStatus.Refunded;
-            booking.Payment.EscrowStatus = EscrowStatus.Refunded;
-        }
+            // Full refund
+            await RefundRenterAsync(booking);
 
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
+            booking.Status = BookingStatus.Cancelled;
+            booking.CompletedAt = DateTime.UtcNow;
+
+            if (booking.Payment != null)
+            {
+                booking.Payment.PaymentStatus = PaymentStatus.Refunded;
+                booking.Payment.EscrowStatus = EscrowStatus.Refunded;
+            }
+
+            await _uow.SaveChangesAsync();
+        });
 
         var notifyUserId = booking.RenterId == requestingUserId
             ? booking.Tool.OwnerId
@@ -245,10 +245,17 @@ public class BookingService : IBookingService
         await _uow.Handovers.AddAsync(handover);
         booking.Status = BookingStatus.DeliveryHandover;
 
-        // Save handover images
-        await SaveHandoverImagesAsync(handover, dto);
-
-        await _uow.SaveChangesAsync();
+        var uploadedPublicIds = await SaveHandoverImagesAsync(handover, dto);
+        try
+        {
+            await _uow.SaveChangesAsync();
+        }
+        catch
+        {
+            foreach (var publicId in uploadedPublicIds)
+                await _cloudinaryService.DeleteImageAsync(publicId);
+            throw;
+        }
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -350,10 +357,17 @@ public class BookingService : IBookingService
         await _uow.Handovers.AddAsync(handover);
         booking.Status = BookingStatus.ReturnHandover;
 
-        // Save handover images
-        await SaveHandoverImagesAsync(handover, dto);
-
-        await _uow.SaveChangesAsync();
+        var uploadedPublicIds = await SaveHandoverImagesAsync(handover, dto);
+        try
+        {
+            await _uow.SaveChangesAsync();
+        }
+        catch
+        {
+            foreach (var publicId in uploadedPublicIds)
+                await _cloudinaryService.DeleteImageAsync(publicId);
+            throw;
+        }
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -387,10 +401,11 @@ public class BookingService : IBookingService
 
         if (dto.Accept)
         {
-            await using var transaction = await _uow.BeginTransactionAsync();
-            await SettleBookingAsync(booking, handover);
-            await _uow.SaveChangesAsync();
-            await transaction.CommitAsync();
+            await _uow.ExecuteInTransactionAsync(async () =>
+            {
+                await SettleBookingAsync(booking, handover);
+                await _uow.SaveChangesAsync();
+            });
 
             await _notificationService.CreateAsync(new CreateNotificationDto
             {
@@ -440,14 +455,130 @@ public class BookingService : IBookingService
     // ── Queries ─────────────────────────────────────────────────────────────
     public async Task<IEnumerable<BookingCardDto>> GetMyBookingsAsync(int renterId)
     {
-        var bookings = await _uow.Bookings.GetByRenterIdAsync(renterId);
-        return bookings.Select(b => MapToCardDto(b, renterId, isOwner: false));
+        var rows = await _uow.Bookings.Query()
+            .Where(b => b.RenterId == renterId)
+            .OrderByDescending(b => b.CreatedAt)
+            .Select(b => new
+            {
+                b.Id,
+                b.ToolId,
+                ToolName = b.Tool.Name,
+                ToolImageUrl = b.Tool.Images.OrderBy(i => i.Id).Select(i => i.ImageUrl).FirstOrDefault(),
+                OtherPartyId = b.Tool.OwnerId,
+                OtherPartyName = b.Tool.Owner.FullName,
+                OtherPartyImageUrl = b.Tool.Owner.ProfileImageUrl,
+                b.StartDate,
+                b.EndDate,
+                b.TotalPrice,
+                b.Status,
+                b.CreatedAt,
+                DeliveryHandover = b.Handovers
+                    .Where(h => h.Type == HandoverType.Delivery)
+                    .OrderByDescending(h => h.SubmittedAt)
+                    .Select(h => new { h.Id, h.IsAccepted, h.SubmittedAt, h.RespondedAt, ImageCount = h.Images.Count() })
+                    .FirstOrDefault(),
+                ReturnHandover = b.Handovers
+                    .Where(h => h.Type == HandoverType.Return)
+                    .OrderByDescending(h => h.SubmittedAt)
+                    .Select(h => new { h.Id, h.IsAccepted, h.SubmittedAt, h.RespondedAt, ImageCount = h.Images.Count() })
+                    .FirstOrDefault(),
+                HasReview = b.Reviews.Any()
+            })
+            .ToListAsync();
+
+        return rows.Select(b => new BookingCardDto(
+            Id: b.Id,
+            ToolId: b.ToolId,
+            ToolName: b.ToolName,
+            ToolImageUrl: b.ToolImageUrl,
+            OtherPartyId: b.OtherPartyId,
+            OtherPartyName: b.OtherPartyName,
+            OtherPartyImageUrl: b.OtherPartyImageUrl,
+            StartDate: b.StartDate,
+            EndDate: b.EndDate,
+            Days: (int)(b.EndDate.Date - b.StartDate.Date).TotalDays,
+            TotalPrice: b.TotalPrice,
+            Status: b.Status?.ToString() ?? string.Empty,
+            CreatedAt: b.CreatedAt,
+            DeliveryHandover: b.DeliveryHandover == null ? null : new HandoverSummaryDto(
+                Id: b.DeliveryHandover.Id,
+                IsSubmitted: true,
+                IsAccepted: b.DeliveryHandover.IsAccepted,
+                SubmittedAt: b.DeliveryHandover.SubmittedAt,
+                RespondedAt: b.DeliveryHandover.RespondedAt,
+                ImageCount: b.DeliveryHandover.ImageCount),
+            ReturnHandover: b.ReturnHandover == null ? null : new HandoverSummaryDto(
+                Id: b.ReturnHandover.Id,
+                IsSubmitted: true,
+                IsAccepted: b.ReturnHandover.IsAccepted,
+                SubmittedAt: b.ReturnHandover.SubmittedAt,
+                RespondedAt: b.ReturnHandover.RespondedAt,
+                ImageCount: b.ReturnHandover.ImageCount),
+            AllowedActions: ComputeAllowedActions(b.Status, isOwner: false, hasReview: b.HasReview)));
     }
 
     public async Task<IEnumerable<BookingCardDto>> GetReceivedBookingsAsync(int ownerId)
     {
-        var bookings = await _uow.Bookings.GetByOwnerIdAsync(ownerId);
-        return bookings.Select(b => MapToCardDto(b, ownerId, isOwner: true));
+        var rows = await _uow.Bookings.Query()
+            .Where(b => b.Tool.OwnerId == ownerId)
+            .OrderByDescending(b => b.CreatedAt)
+            .Select(b => new
+            {
+                b.Id,
+                b.ToolId,
+                ToolName = b.Tool.Name,
+                ToolImageUrl = b.Tool.Images.OrderBy(i => i.Id).Select(i => i.ImageUrl).FirstOrDefault(),
+                OtherPartyId = b.RenterId,
+                OtherPartyName = b.Renter.FullName,
+                OtherPartyImageUrl = b.Renter.ProfileImageUrl,
+                b.StartDate,
+                b.EndDate,
+                b.TotalPrice,
+                b.Status,
+                b.CreatedAt,
+                DeliveryHandover = b.Handovers
+                    .Where(h => h.Type == HandoverType.Delivery)
+                    .OrderByDescending(h => h.SubmittedAt)
+                    .Select(h => new { h.Id, h.IsAccepted, h.SubmittedAt, h.RespondedAt, ImageCount = h.Images.Count() })
+                    .FirstOrDefault(),
+                ReturnHandover = b.Handovers
+                    .Where(h => h.Type == HandoverType.Return)
+                    .OrderByDescending(h => h.SubmittedAt)
+                    .Select(h => new { h.Id, h.IsAccepted, h.SubmittedAt, h.RespondedAt, ImageCount = h.Images.Count() })
+                    .FirstOrDefault(),
+                HasReview = b.Reviews.Any()
+            })
+            .ToListAsync();
+
+        return rows.Select(b => new BookingCardDto(
+            Id: b.Id,
+            ToolId: b.ToolId,
+            ToolName: b.ToolName,
+            ToolImageUrl: b.ToolImageUrl,
+            OtherPartyId: b.OtherPartyId,
+            OtherPartyName: b.OtherPartyName,
+            OtherPartyImageUrl: b.OtherPartyImageUrl,
+            StartDate: b.StartDate,
+            EndDate: b.EndDate,
+            Days: (int)(b.EndDate.Date - b.StartDate.Date).TotalDays,
+            TotalPrice: b.TotalPrice,
+            Status: b.Status?.ToString() ?? string.Empty,
+            CreatedAt: b.CreatedAt,
+            DeliveryHandover: b.DeliveryHandover == null ? null : new HandoverSummaryDto(
+                Id: b.DeliveryHandover.Id,
+                IsSubmitted: true,
+                IsAccepted: b.DeliveryHandover.IsAccepted,
+                SubmittedAt: b.DeliveryHandover.SubmittedAt,
+                RespondedAt: b.DeliveryHandover.RespondedAt,
+                ImageCount: b.DeliveryHandover.ImageCount),
+            ReturnHandover: b.ReturnHandover == null ? null : new HandoverSummaryDto(
+                Id: b.ReturnHandover.Id,
+                IsSubmitted: true,
+                IsAccepted: b.ReturnHandover.IsAccepted,
+                SubmittedAt: b.ReturnHandover.SubmittedAt,
+                RespondedAt: b.ReturnHandover.RespondedAt,
+                ImageCount: b.ReturnHandover.ImageCount),
+            AllowedActions: ComputeAllowedActions(b.Status, isOwner: true, hasReview: b.HasReview)));
     }
 
     public async Task<BookingDto> GetBookingByIdAsync(int bookingId, int requestingUserId)
@@ -626,8 +757,7 @@ public class BookingService : IBookingService
             booking.Payment.EscrowStatus = EscrowStatus.Released;
         }
 
-        // Cleanup handover images from DB and file system
-        await CleanupHandoverImagesAsync(booking.Id);
+        await CleanupHandoverImagesAsync(booking);
     }
 
     private async Task RefundRenterAsync(Booking booking)
@@ -649,16 +779,19 @@ public class BookingService : IBookingService
         });
     }
 
-    private async Task SaveHandoverImagesAsync(Handover handover, SubmitHandoverRequest dto)
+    private async Task<List<string>> SaveHandoverImagesAsync(Handover handover, SubmitHandoverRequest dto)
     {
+        var uploadedPublicIds = new List<string>();
+
         if (dto.Images == null || dto.Images.Count == 0)
-            return;
+            return uploadedPublicIds;
 
         foreach (var file in dto.Images)
         {
             if (file.Length == 0) continue;
 
             var uploadResult = await _cloudinaryService.UploadImageAsync(file);
+            uploadedPublicIds.Add(uploadResult.PublicId);
 
             await _uow.HandoverImages.AddAsync(new HandoverImage
             {
@@ -669,13 +802,12 @@ public class BookingService : IBookingService
                 UploadedAt = DateTime.UtcNow
             });
         }
+
+        return uploadedPublicIds;
     }
 
-    private async Task CleanupHandoverImagesAsync(int bookingId)
+    private async Task CleanupHandoverImagesAsync(Booking booking)
     {
-        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId);
-        if (booking == null) return;
-
         var images = booking.Handovers?.SelectMany(h => h.Images ?? new List<HandoverImage>()).ToList()
                      ?? new List<HandoverImage>();
 
@@ -691,11 +823,11 @@ public class BookingService : IBookingService
 
     // ── Allowed Actions ─────────────────────────────────────────────────────
 
-    private static IReadOnlyList<string> ComputeAllowedActions(Booking b, int userId, bool isOwner)
+    private static IReadOnlyList<string> ComputeAllowedActions(BookingStatus? status, bool isOwner, bool hasReview)
     {
         var actions = new List<string>();
 
-        switch (b.Status)
+        switch (status)
         {
             case BookingStatus.Pending:
                 if (isOwner)
@@ -772,8 +904,6 @@ public class BookingService : IBookingService
                 }
                 else
                 {
-                    // Check if renter already left a review
-                    var hasReview = b.Reviews?.Any() ?? false;
                     if (!hasReview)
                         actions.Add("LeaveReview");
                     actions.Add("MessageOwner");
@@ -795,75 +925,6 @@ public class BookingService : IBookingService
         }
 
         return actions;
-    }
-
-    // ── Mapping — Card DTO (for list views) ─────────────────────────────────
-
-    private static BookingCardDto MapToCardDto(Booking b, int userId, bool isOwner)
-    {
-        var days = (int)(b.EndDate.Date - b.StartDate.Date).TotalDays;
-
-        int otherPartyId;
-        string otherPartyName;
-        string? otherPartyImageUrl;
-
-        if (isOwner)
-        {
-            otherPartyId = b.RenterId;
-            otherPartyName = b.Renter?.FullName ?? string.Empty;
-            otherPartyImageUrl = b.Renter?.ProfileImageUrl;
-        }
-        else
-        {
-            otherPartyId = b.Tool?.OwnerId ?? 0;
-            otherPartyName = b.Tool?.Owner?.FullName ?? string.Empty;
-            otherPartyImageUrl = b.Tool?.Owner?.ProfileImageUrl;
-        }
-
-        var deliveryHandover = b.Handovers?
-            .Where(h => h.Type == HandoverType.Delivery)
-            .OrderByDescending(h => h.SubmittedAt)
-            .Select(h => new HandoverSummaryDto(
-                Id: h.Id,
-                IsSubmitted: true,
-                IsAccepted: h.IsAccepted,
-                SubmittedAt: h.SubmittedAt,
-                RespondedAt: h.RespondedAt,
-                ImageCount: h.Images?.Count ?? 0
-            ))
-            .FirstOrDefault();
-
-        var returnHandover = b.Handovers?
-            .Where(h => h.Type == HandoverType.Return)
-            .OrderByDescending(h => h.SubmittedAt)
-            .Select(h => new HandoverSummaryDto(
-                Id: h.Id,
-                IsSubmitted: true,
-                IsAccepted: h.IsAccepted,
-                SubmittedAt: h.SubmittedAt,
-                RespondedAt: h.RespondedAt,
-                ImageCount: h.Images?.Count ?? 0
-            ))
-            .FirstOrDefault();
-
-        return new BookingCardDto(
-            Id: b.Id,
-            ToolId: b.ToolId,
-            ToolName: b.Tool?.Name ?? string.Empty,
-            ToolImageUrl: b.Tool?.Images?.FirstOrDefault()?.ImageUrl,
-            OtherPartyId: otherPartyId,
-            OtherPartyName: otherPartyName,
-            OtherPartyImageUrl: otherPartyImageUrl,
-            StartDate: b.StartDate,
-            EndDate: b.EndDate,
-            Days: days,
-            TotalPrice: b.TotalPrice,
-            Status: b.Status?.ToString() ?? string.Empty,
-            CreatedAt: b.CreatedAt,
-            DeliveryHandover: deliveryHandover,
-            ReturnHandover: returnHandover,
-            AllowedActions: ComputeAllowedActions(b, userId, isOwner)
-        );
     }
 
     // ── Mapping — Full DTO (for detail view) ────────────────────────────────
@@ -908,7 +969,7 @@ public class BookingService : IBookingService
                 RespondedAt: h.RespondedAt,
                 Images: h.Images?.Select(i => new HandoverImageDto(i.Id, i.ImageUrl, i.Caption))
             )),
-            AllowedActions: ComputeAllowedActions(b, requestingUserId, isOwner),
+            AllowedActions: ComputeAllowedActions(b.Status, isOwner, hasReview: b.Reviews?.Any() ?? false),
             HasReview: b.Reviews?.Any() ?? false);
     }
 }
