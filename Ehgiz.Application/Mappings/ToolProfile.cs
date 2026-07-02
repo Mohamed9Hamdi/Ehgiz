@@ -1,4 +1,5 @@
-﻿using Ehgiz.Application.DTOs.Tools;
+﻿using Ehgiz.Application.DTOs.Admin;
+using Ehgiz.Application.DTOs.Tools;
 using Ehgiz.DAL.Entities;
 using Mapster;
 
@@ -17,6 +18,12 @@ public class ToolProfile : IRegister
             .Map(dest => dest.ImageUrls, src => src.Images.Select(i => i.ImageUrl).ToList());
 
        
+        config.NewConfig<Tool, AdminListingDto>()
+            .Map(dest => dest.CategoryName, src => src.Category.Name)
+            .Map(dest => dest.OwnerName, src => src.Owner.FullName)
+            .Map(dest => dest.FirstImageUrl, src => src.Images.OrderBy(i => i.Id).Select(i => i.ImageUrl).FirstOrDefault())
+            .Map(dest => dest.Condition, src => src.Condition.HasValue ? src.Condition.Value.ToString() : null);
+
         config.NewConfig<CreateToolDto, Tool>()
             .Map(dest => dest.IsAvailable, _ => true)              
             .Map(dest => dest.CreatedAt, _ => DateTime.UtcNow)

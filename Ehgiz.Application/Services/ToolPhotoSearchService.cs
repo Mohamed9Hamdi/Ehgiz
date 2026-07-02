@@ -10,6 +10,7 @@ using Ehgiz.Application.Settings;
 using Ehgiz.DAL.Interfaces;
 using Mapster;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenAI.Chat;
@@ -66,11 +67,7 @@ public class ToolPhotoSearchService : IToolPhotoSearchService
             throw new InvalidOperationException("Could not identify an object in the photo.");
 
         var keywords = BuildSearchKeywords(parsed);
-        var (items, totalCount) = await _uow.Tools.SearchByKeywordsAsync(
-            keywords,
-            isAvailable: true,
-            page,
-            pageSize);
+        var matchingTools = await SearchToolsByKeywordsAsync(keywords, page, pageSize);
 
         return new PhotoSearchResultDto
         {
@@ -78,13 +75,39 @@ public class ToolPhotoSearchService : IToolPhotoSearchService
             Brand = string.IsNullOrWhiteSpace(parsed.Brand) ? null : parsed.Brand.Trim(),
             Model = string.IsNullOrWhiteSpace(parsed.Model) ? null : parsed.Model.Trim(),
             SearchKeywords = keywords,
-            MatchingTools = new PagedResult<ToolDto>
-            {
-                Items = items.Adapt<List<ToolDto>>(),
-                TotalCount = totalCount,
-                PageNumber = page,
-                PageSize = pageSize
-            }
+            MatchingTools = matchingTools
+        };
+    }
+
+    private async Task<PagedResult<ToolDto>> SearchToolsByKeywordsAsync(
+        IReadOnlyList<string> keywords,
+        int page,
+        int pageSize)
+    {
+        if (keywords.Count == 0)
+            return new PagedResult<ToolDto> { Items = [], TotalCount = 0, PageNumber = page, PageSize = pageSize };
+
+        var query = _uow.Tools.Query()
+            .Where(t => t.IsAvailable == true)
+            .Where(t => keywords.Any(keyword =>
+                t.Name.Contains(keyword) ||
+                (t.Description != null && t.Description.Contains(keyword))));
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(t => t.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ProjectToType<ToolDto>()
+            .ToListAsync();
+
+        return new PagedResult<ToolDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageNumber = page,
+            PageSize = pageSize
         };
     }
 

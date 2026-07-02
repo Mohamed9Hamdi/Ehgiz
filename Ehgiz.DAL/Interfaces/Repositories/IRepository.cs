@@ -4,6 +4,7 @@ namespace Ehgiz.DAL.Interfaces.Repositories;
 
 public interface IRepository<T> where T : class
 {
+    IQueryable<T> Query();
     Task<T?> GetByIdAsync(object id);
     Task<IReadOnlyList<T>> GetAllAsync();
     Task AddAsync(T entity);

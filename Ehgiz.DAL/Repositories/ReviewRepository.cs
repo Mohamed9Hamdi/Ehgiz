@@ -11,42 +11,12 @@ public class ReviewRepository : Repository<Review>, IReviewRepository
     {
     }
 
-    public async Task<List<Review>> GetByToolAsync(int toolId)
-    {
-        return await _context.Reviews
-            .Include(r => r.Booking)
-                .ThenInclude(b => b.Tool)
-            .Include(r => r.Booking)
-                .ThenInclude(b => b.Renter)
-            .AsNoTracking()
-            .Where(r => r.Booking.ToolId == toolId)
-            .OrderByDescending(r => r.CreatedAt)
-            .ToListAsync();
-    }
+    public Task<bool> ExistsForBookingAsync(int bookingId)
+        => _context.Reviews.AnyAsync(r => r.BookingId == bookingId);
 
-    public async Task<Review?> GetByIdWithDetailsAsync(int id)
-    {
-        return await _context.Reviews
-            .Include(r => r.Booking)
-                .ThenInclude(b => b.Tool)
-            .Include(r => r.Booking)
-                .ThenInclude(b => b.Renter)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Id == id);
-    }
-
-    public async Task<bool> ExistsForBookingAsync(int bookingId)
-    {
-        return await _context.Reviews.AnyAsync(r => r.BookingId == bookingId);
-    }
-
-    public async Task<List<int>> GetRatingsByToolAsync(int toolId)
-    {
-        return await _context.Reviews
-            .Include(r => r.Booking)
-            .AsNoTracking()
+    public Task<List<int>> GetRatingsByToolAsync(int toolId)
+        => _context.Reviews
             .Where(r => r.Booking.ToolId == toolId)
             .Select(r => r.Rating)
             .ToListAsync();
-    }
 }

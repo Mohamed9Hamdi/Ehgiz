@@ -10,7 +10,15 @@ public static class DatabaseExtensions
         services.AddDbContext<EhgizDbContext>(options =>
             options.UseSqlServer(
                 configuration.GetConnectionString("DefaultConnection"),
-                sql => sql.MigrationsAssembly(typeof(EhgizDbContext).Assembly.GetName().Name)));
+                sql =>
+                {
+                    sql.MigrationsAssembly(typeof(EhgizDbContext).Assembly.GetName().Name);
+                    sql.CommandTimeout(120);
+                    sql.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorNumbersToAdd: null);
+                }));
 
         return services;
     }

@@ -4,7 +4,9 @@ using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
+using Mapster;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Ehgiz.Application.Services;
 
@@ -98,16 +100,11 @@ public class WalletService : IWalletService
 
     public async Task<IEnumerable<WalletTransactionDto>> GetTransactionHistoryAsync(int userId)
     {
-        var wallet = await _uow.Wallets.GetByUserIdWithTransactionsAsync(userId);
-        if (wallet is null) return [];
-
-        return wallet.Transactions.Select(t => new WalletTransactionDto(
-            Id: t.Id,
-            Amount: t.Amount,
-            Type: t.Type.ToString(),
-            Description: t.Description,
-            Reference: t.Reference,
-            CreatedAt: t.CreatedAt));
+        return await _uow.WalletTransactions.Query()
+            .Where(t => t.Wallet.UserId == userId)
+            .OrderByDescending(t => t.CreatedAt)
+            .ProjectToType<WalletTransactionDto>()
+            .ToListAsync();
     }
 
     public async Task<ConnectOnboardingResponse> GetConnectOnboardingUrlAsync(

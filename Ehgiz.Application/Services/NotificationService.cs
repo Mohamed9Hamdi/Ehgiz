@@ -3,6 +3,7 @@ using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Interfaces;
 using Mapster;
+using Microsoft.EntityFrameworkCore;
 
 namespace Ehgiz.Application.Services;
 
@@ -19,14 +20,20 @@ public class NotificationService : INotificationService
 
     public async Task<IReadOnlyList<NotificationDto>> GetByUserIdAsync(int userId)
     {
-        var notifications = await _uow.Notifications.GetByUserIdAsync(userId);
-        return notifications.Adapt<List<NotificationDto>>();
+        return await _uow.Notifications.Query()
+            .Where(n => n.UserId == userId)
+            .OrderByDescending(n => n.CreatedAt)
+            .ProjectToType<NotificationDto>()
+            .ToListAsync();
     }
 
     public async Task<IReadOnlyList<NotificationDto>> GetUnreadByUserIdAsync(int userId)
     {
-        var notifications = await _uow.Notifications.GetUnreadByUserIdAsync(userId);
-        return notifications.Adapt<List<NotificationDto>>();
+        return await _uow.Notifications.Query()
+            .Where(n => n.UserId == userId && !n.IsRead)
+            .OrderByDescending(n => n.CreatedAt)
+            .ProjectToType<NotificationDto>()
+            .ToListAsync();
     }
 
     public async Task<int> GetUnreadCountAsync(int userId)
@@ -58,11 +65,13 @@ public class NotificationService : INotificationService
             throw new UnauthorizedAccessException("Not your notification");
 
         await _uow.Notifications.MarkAsReadAsync(notificationId);
+        await _broadcaster.NotifyReadStateChangedAsync(userId);
     }
 
     public async Task MarkAllAsReadAsync(int userId)
     {
         await _uow.Notifications.MarkAllAsReadAsync(userId);
+        await _broadcaster.NotifyReadStateChangedAsync(userId);
     }
 
     public async Task DeleteAsync(int notificationId, int userId)
