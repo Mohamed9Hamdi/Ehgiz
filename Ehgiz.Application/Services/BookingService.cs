@@ -60,23 +60,6 @@ public class BookingService : IBookingService
             throw new InvalidOperationException(
                 $"Insufficient wallet balance. Required: {totalCharged:C}, Available: {wallet.Balance:C}");
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        // Deduct from wallet → hold in escrow
-        wallet.Balance -= totalCharged;
-        wallet.HeldBalance += totalCharged;
-        wallet.UpdatedAt = DateTime.UtcNow;
-
-        await _uow.WalletTransactions.AddAsync(new WalletTransaction
-        {
-            WalletId = wallet.Id,
-            Amount = -totalCharged,
-            Type = WalletTransactionType.BookingDebit,
-            Reference = dto.ToolId.ToString(),
-            Description = $"Booking for '{tool.Name}' ({days} days) + insurance",
-            CreatedAt = DateTime.UtcNow
-        });
-
         var booking = new Booking
         {
             ToolId = dto.ToolId,
@@ -92,9 +75,26 @@ public class BookingService : IBookingService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _uow.Bookings.AddAsync(booking);
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
+        await _uow.ExecuteInTransactionAsync(async () =>
+        {
+            // Deduct from wallet → hold in escrow
+            wallet.Balance -= totalCharged;
+            wallet.HeldBalance += totalCharged;
+            wallet.UpdatedAt = DateTime.UtcNow;
+
+            await _uow.WalletTransactions.AddAsync(new WalletTransaction
+            {
+                WalletId = wallet.Id,
+                Amount = -totalCharged,
+                Type = WalletTransactionType.BookingDebit,
+                Reference = dto.ToolId.ToString(),
+                Description = $"Booking for '{tool.Name}' ({days} days) + insurance",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _uow.Bookings.AddAsync(booking);
+            await _uow.SaveChangesAsync();
+        });
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -151,22 +151,22 @@ public class BookingService : IBookingService
         if (booking.Status != BookingStatus.Pending)
             throw new InvalidOperationException("Only pending bookings can be rejected.");
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        // Full refund
-        await RefundRenterAsync(booking);
-
-        booking.Status = BookingStatus.Rejected;
-        booking.CompletedAt = DateTime.UtcNow;
-
-        if (booking.Payment != null)
+        await _uow.ExecuteInTransactionAsync(async () =>
         {
-            booking.Payment.PaymentStatus = PaymentStatus.Refunded;
-            booking.Payment.EscrowStatus = EscrowStatus.Refunded;
-        }
+            // Full refund
+            await RefundRenterAsync(booking);
 
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
+            booking.Status = BookingStatus.Rejected;
+            booking.CompletedAt = DateTime.UtcNow;
+
+            if (booking.Payment != null)
+            {
+                booking.Payment.PaymentStatus = PaymentStatus.Refunded;
+                booking.Payment.EscrowStatus = EscrowStatus.Refunded;
+            }
+
+            await _uow.SaveChangesAsync();
+        });
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -190,22 +190,22 @@ public class BookingService : IBookingService
         if (booking.Status != BookingStatus.Pending && booking.Status != BookingStatus.Accepted)
             throw new InvalidOperationException("Only pending or accepted bookings can be cancelled.");
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        // Full refund
-        await RefundRenterAsync(booking);
-
-        booking.Status = BookingStatus.Cancelled;
-        booking.CompletedAt = DateTime.UtcNow;
-
-        if (booking.Payment != null)
+        await _uow.ExecuteInTransactionAsync(async () =>
         {
-            booking.Payment.PaymentStatus = PaymentStatus.Refunded;
-            booking.Payment.EscrowStatus = EscrowStatus.Refunded;
-        }
+            // Full refund
+            await RefundRenterAsync(booking);
 
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
+            booking.Status = BookingStatus.Cancelled;
+            booking.CompletedAt = DateTime.UtcNow;
+
+            if (booking.Payment != null)
+            {
+                booking.Payment.PaymentStatus = PaymentStatus.Refunded;
+                booking.Payment.EscrowStatus = EscrowStatus.Refunded;
+            }
+
+            await _uow.SaveChangesAsync();
+        });
 
         var notifyUserId = booking.RenterId == requestingUserId
             ? booking.Tool.OwnerId
@@ -402,10 +402,11 @@ public class BookingService : IBookingService
 
         if (dto.Accept)
         {
-            await using var transaction = await _uow.BeginTransactionAsync();
-            await SettleBookingAsync(booking, handover);
-            await _uow.SaveChangesAsync();
-            await transaction.CommitAsync();
+            await _uow.ExecuteInTransactionAsync(async () =>
+            {
+                await SettleBookingAsync(booking, handover);
+                await _uow.SaveChangesAsync();
+            });
 
             await _notificationService.CreateAsync(new CreateNotificationDto
             {
