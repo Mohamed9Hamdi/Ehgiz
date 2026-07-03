@@ -6,7 +6,8 @@
       "Bash(exit 0)",
       "Bash(dotnet list *)",
       "Bash(dotnet test *)",
-      "Bash(xargs grep -l \"Fact\\\\|Theory\")"
+      "Bash(xargs grep -l \"Fact\\\\|Theory\")",
+      "Bash(echo \"---exit:$?\")"
     ]
   }
 }
