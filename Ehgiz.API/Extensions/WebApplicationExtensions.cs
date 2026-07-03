@@ -26,7 +26,10 @@ public static class WebApplicationExtensions
     {
         app.UseMiddleware<RequestLoggingMiddleware>();
         app.UseMiddleware<ExceptionHandlingMiddleware>();
-        app.UseHttpsRedirection();
+
+        if (!app.Environment.IsDevelopment())
+            app.UseHttpsRedirection();
+
         app.UseCors("Angular");
         app.UseAuthentication();
         app.UseAuthorization();
