@@ -19,3 +19,13 @@ public record AdminWalletTransactionDto(
     string? Description,
     string? Reference,
     DateTime CreatedAt);
+
+public record RollbackTransactionRequest(string Reason);
+
+public record RollbackTransactionResultDto(
+    int OriginalTransactionId,
+    int SenderUserId,
+    int ReceiverUserId,
+    decimal Amount,
+    string Reason,
+    DateTime CreatedAt);

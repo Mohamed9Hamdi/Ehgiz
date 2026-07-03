@@ -4,6 +4,7 @@ using Ehgiz.DAL.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ehgiz.DAL.Migrations
 {
     [DbContext(typeof(EhgizDbContext))]
-    partial class EhgizDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260624003944_AddPublicIdToImages")]
+    partial class AddPublicIdToImages
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -513,41 +516,6 @@ namespace Ehgiz.DAL.Migrations
                     b.ToTable("Notifications", (string)null);
                 });
 
-            modelBuilder.Entity("Ehgiz.DAL.Entities.PasswordResetCode", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CodeHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("UsedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CodeHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("PasswordResetCodes", (string)null);
-                });
-
             modelBuilder.Entity("Ehgiz.DAL.Entities.Payment", b =>
                 {
                     b.Property<int>("Id")
@@ -708,7 +676,7 @@ namespace Ehgiz.DAL.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<decimal>("InsurancePrice")
                         .HasColumnType("decimal(18,2)");
@@ -1144,17 +1112,6 @@ namespace Ehgiz.DAL.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Ehgiz.DAL.Entities.PasswordResetCode", b =>
-                {
-                    b.HasOne("Ehgiz.DAL.Entities.ApplicationUser", "User")
-                        .WithMany("PasswordResetCodes")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Ehgiz.DAL.Entities.Payment", b =>
                 {
                     b.HasOne("Ehgiz.DAL.Entities.Booking", "Booking")
@@ -1328,8 +1285,6 @@ namespace Ehgiz.DAL.Migrations
                     b.Navigation("Notifications");
 
                     b.Navigation("OwnedTools");
-
-                    b.Navigation("PasswordResetCodes");
 
                     b.Navigation("RefreshTokens");
 

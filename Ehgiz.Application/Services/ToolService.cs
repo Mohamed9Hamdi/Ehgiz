@@ -14,13 +14,13 @@ namespace Ehgiz.Application.Services;
 public class ToolService : IToolService
 {
     private readonly IUnitOfWork _uow;
-    private readonly IWebHostEnvironment _env;
+    private readonly ICloudinaryService _cloudinaryService;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public ToolService(IUnitOfWork uow, IWebHostEnvironment env, IHttpContextAccessor httpContextAccessor)
+    public ToolService(IUnitOfWork uow, ICloudinaryService cloudinaryService, IHttpContextAccessor httpContextAccessor)
     {
         _uow = uow;
-        _env = env;
+        _cloudinaryService = cloudinaryService;
         _httpContextAccessor = httpContextAccessor;
     }
 
@@ -127,32 +127,18 @@ public class ToolService : IToolService
         if (images == null || images.Count == 0)
             throw new ValidationException("No images provided");
 
-        var uploadPath = Path.Combine(_env.ContentRootPath, "uploads", "tools", toolId.ToString());
-        Directory.CreateDirectory(uploadPath);
-
-        if (_httpContextAccessor.HttpContext is null)
-            throw new InvalidOperationException("No HTTP context available.");
-
-        var request = _httpContextAccessor.HttpContext.Request;
-        var baseUrl = $"{request.Scheme}://{request.Host}";
-
         var urls = new List<string>();
 
         foreach (var img in images)
         {
-            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(img.FileName)}";
-            var filePath = Path.Combine(uploadPath, fileName);
-
-            await using var stream = new FileStream(filePath, FileMode.Create);
-            await img.CopyToAsync(stream);
-
-            var url = $"{baseUrl}/uploads/tools/{toolId}/{fileName}";
-            urls.Add(url);
+            var uploadResult = await _cloudinaryService.UploadImageAsync(img);
+            urls.Add(uploadResult.ImageUrl);
 
             await _uow.ToolImages.AddAsync(new ToolImage
             {
                 ToolId = toolId,
-                ImageUrl = url
+                ImageUrl = uploadResult.ImageUrl,
+                PublicId = uploadResult.PublicId
             });
         }
 
@@ -168,16 +154,9 @@ public class ToolService : IToolService
         if (image.Tool.OwnerId != ownerId)
             throw new UnauthorizedAccessException("Not your image");
 
-        var parts = image.ImageUrl.Split("/uploads/");
-        if (parts.Length == 2)
+        if (!string.IsNullOrEmpty(image.PublicId))
         {
-            var filePath = Path.Combine(
-                _env.ContentRootPath,
-                "uploads",
-                parts[1].Replace("/", Path.DirectorySeparatorChar.ToString()));
-
-            if (File.Exists(filePath))
-                File.Delete(filePath);
+            await _cloudinaryService.DeleteImageAsync(image.PublicId);
         }
 
         _uow.ToolImages.Remove(image);

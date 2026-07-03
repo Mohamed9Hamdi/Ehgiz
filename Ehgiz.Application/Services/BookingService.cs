@@ -5,7 +5,6 @@ using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ehgiz.Application.Services;
@@ -14,13 +13,13 @@ public class BookingService : IBookingService
 {
     private readonly IUnitOfWork _uow;
     private readonly INotificationService _notificationService;
-    private readonly string _handoverUploadPath;
+    private readonly ICloudinaryService _cloudinaryService;
 
-    public BookingService(IUnitOfWork uow, IWebHostEnvironment env, INotificationService notificationService)
+    public BookingService(IUnitOfWork uow, ICloudinaryService cloudinaryService, INotificationService notificationService)
     {
         _uow = uow;
         _notificationService = notificationService;
-        _handoverUploadPath = Path.Combine(env.ContentRootPath, "uploads", "handover");
+        _cloudinaryService = cloudinaryService;
     }
 
     // ── Create Booking ──────────────────────────────────────────────────────
@@ -60,23 +59,6 @@ public class BookingService : IBookingService
             throw new InvalidOperationException(
                 $"Insufficient wallet balance. Required: {totalCharged:C}, Available: {wallet.Balance:C}");
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        // Deduct from wallet → hold in escrow
-        wallet.Balance -= totalCharged;
-        wallet.HeldBalance += totalCharged;
-        wallet.UpdatedAt = DateTime.UtcNow;
-
-        await _uow.WalletTransactions.AddAsync(new WalletTransaction
-        {
-            WalletId = wallet.Id,
-            Amount = -totalCharged,
-            Type = WalletTransactionType.BookingDebit,
-            Reference = dto.ToolId.ToString(),
-            Description = $"Booking for '{tool.Name}' ({days} days) + insurance",
-            CreatedAt = DateTime.UtcNow
-        });
-
         var booking = new Booking
         {
             ToolId = dto.ToolId,
@@ -92,9 +74,26 @@ public class BookingService : IBookingService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _uow.Bookings.AddAsync(booking);
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
+        await _uow.ExecuteInTransactionAsync(async () =>
+        {
+            // Deduct from wallet → hold in escrow
+            wallet.Balance -= totalCharged;
+            wallet.HeldBalance += totalCharged;
+            wallet.UpdatedAt = DateTime.UtcNow;
+
+            await _uow.WalletTransactions.AddAsync(new WalletTransaction
+            {
+                WalletId = wallet.Id,
+                Amount = -totalCharged,
+                Type = WalletTransactionType.BookingDebit,
+                Reference = dto.ToolId.ToString(),
+                Description = $"Booking for '{tool.Name}' ({days} days) + insurance",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _uow.Bookings.AddAsync(booking);
+            await _uow.SaveChangesAsync();
+        });
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -151,22 +150,22 @@ public class BookingService : IBookingService
         if (booking.Status != BookingStatus.Pending)
             throw new InvalidOperationException("Only pending bookings can be rejected.");
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        // Full refund
-        await RefundRenterAsync(booking);
-
-        booking.Status = BookingStatus.Rejected;
-        booking.CompletedAt = DateTime.UtcNow;
-
-        if (booking.Payment != null)
+        await _uow.ExecuteInTransactionAsync(async () =>
         {
-            booking.Payment.PaymentStatus = PaymentStatus.Refunded;
-            booking.Payment.EscrowStatus = EscrowStatus.Refunded;
-        }
+            // Full refund
+            await RefundRenterAsync(booking);
 
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
+            booking.Status = BookingStatus.Rejected;
+            booking.CompletedAt = DateTime.UtcNow;
+
+            if (booking.Payment != null)
+            {
+                booking.Payment.PaymentStatus = PaymentStatus.Refunded;
+                booking.Payment.EscrowStatus = EscrowStatus.Refunded;
+            }
+
+            await _uow.SaveChangesAsync();
+        });
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -190,22 +189,22 @@ public class BookingService : IBookingService
         if (booking.Status != BookingStatus.Pending && booking.Status != BookingStatus.Accepted)
             throw new InvalidOperationException("Only pending or accepted bookings can be cancelled.");
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        // Full refund
-        await RefundRenterAsync(booking);
-
-        booking.Status = BookingStatus.Cancelled;
-        booking.CompletedAt = DateTime.UtcNow;
-
-        if (booking.Payment != null)
+        await _uow.ExecuteInTransactionAsync(async () =>
         {
-            booking.Payment.PaymentStatus = PaymentStatus.Refunded;
-            booking.Payment.EscrowStatus = EscrowStatus.Refunded;
-        }
+            // Full refund
+            await RefundRenterAsync(booking);
 
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
+            booking.Status = BookingStatus.Cancelled;
+            booking.CompletedAt = DateTime.UtcNow;
+
+            if (booking.Payment != null)
+            {
+                booking.Payment.PaymentStatus = PaymentStatus.Refunded;
+                booking.Payment.EscrowStatus = EscrowStatus.Refunded;
+            }
+
+            await _uow.SaveChangesAsync();
+        });
 
         var notifyUserId = booking.RenterId == requestingUserId
             ? booking.Tool.OwnerId
@@ -246,15 +245,15 @@ public class BookingService : IBookingService
         await _uow.Handovers.AddAsync(handover);
         booking.Status = BookingStatus.DeliveryHandover;
 
-        await SaveHandoverImagesAsync(handover, dto);
+        var uploadedPublicIds = await SaveHandoverImagesAsync(handover, dto);
         try
         {
             await _uow.SaveChangesAsync();
         }
         catch
         {
-            var folder = Path.Combine(_handoverUploadPath, handover.BookingId.ToString());
-            if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
+            foreach (var publicId in uploadedPublicIds)
+                await _cloudinaryService.DeleteImageAsync(publicId);
             throw;
         }
 
@@ -358,15 +357,15 @@ public class BookingService : IBookingService
         await _uow.Handovers.AddAsync(handover);
         booking.Status = BookingStatus.ReturnHandover;
 
-        await SaveHandoverImagesAsync(handover, dto);
+        var uploadedPublicIds = await SaveHandoverImagesAsync(handover, dto);
         try
         {
             await _uow.SaveChangesAsync();
         }
         catch
         {
-            var folder = Path.Combine(_handoverUploadPath, handover.BookingId.ToString());
-            if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
+            foreach (var publicId in uploadedPublicIds)
+                await _cloudinaryService.DeleteImageAsync(publicId);
             throw;
         }
 
@@ -402,10 +401,11 @@ public class BookingService : IBookingService
 
         if (dto.Accept)
         {
-            await using var transaction = await _uow.BeginTransactionAsync();
-            await SettleBookingAsync(booking, handover);
-            await _uow.SaveChangesAsync();
-            await transaction.CommitAsync();
+            await _uow.ExecuteInTransactionAsync(async () =>
+            {
+                await SettleBookingAsync(booking, handover);
+                await _uow.SaveChangesAsync();
+            });
 
             await _notificationService.CreateAsync(new CreateNotificationDto
             {
@@ -779,50 +779,46 @@ public class BookingService : IBookingService
         });
     }
 
-    private async Task SaveHandoverImagesAsync(Handover handover, SubmitHandoverRequest dto)
+    private async Task<List<string>> SaveHandoverImagesAsync(Handover handover, SubmitHandoverRequest dto)
     {
-        if (dto.Images == null || dto.Images.Count == 0)
-            return;
+        var uploadedPublicIds = new List<string>();
 
-        var folderPath = Path.Combine(_handoverUploadPath, handover.BookingId.ToString());
-        Directory.CreateDirectory(folderPath);
+        if (dto.Images == null || dto.Images.Count == 0)
+            return uploadedPublicIds;
 
         foreach (var file in dto.Images)
         {
             if (file.Length == 0) continue;
 
-            var ext = Path.GetExtension(file.FileName);
-            var fileName = $"{Guid.NewGuid()}{ext}";
-            var filePath = Path.Combine(folderPath, fileName);
-
-            await using var stream = new FileStream(filePath, FileMode.Create);
-            await file.CopyToAsync(stream);
-
-            var relativeUrl = $"/uploads/handover/{handover.BookingId}/{fileName}";
+            var uploadResult = await _cloudinaryService.UploadImageAsync(file);
+            uploadedPublicIds.Add(uploadResult.PublicId);
 
             await _uow.HandoverImages.AddAsync(new HandoverImage
             {
                 Handover = handover,
-                ImageUrl = relativeUrl,
+                ImageUrl = uploadResult.ImageUrl,
+                PublicId = uploadResult.PublicId,
                 Caption = null,
                 UploadedAt = DateTime.UtcNow
             });
         }
+
+        return uploadedPublicIds;
     }
 
-    private Task CleanupHandoverImagesAsync(Booking booking)
+    private async Task CleanupHandoverImagesAsync(Booking booking)
     {
         var images = booking.Handovers?.SelectMany(h => h.Images ?? new List<HandoverImage>()).ToList()
                      ?? new List<HandoverImage>();
 
         foreach (var image in images)
+        {
+            if (!string.IsNullOrEmpty(image.PublicId))
+            {
+                await _cloudinaryService.DeleteImageAsync(image.PublicId);
+            }
             _uow.HandoverImages.Remove(image);
-
-        var folderPath = Path.Combine(_handoverUploadPath, booking.Id.ToString());
-        if (Directory.Exists(folderPath))
-            Directory.Delete(folderPath, recursive: true);
-
-        return Task.CompletedTask;
+        }
     }
 
     // ── Allowed Actions ─────────────────────────────────────────────────────

@@ -8,7 +8,6 @@ using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
 using Mapster;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,19 +17,19 @@ public class AdminService : IAdminService
 {
     private readonly IUnitOfWork _uow;
     private readonly INotificationService _notificationService;
+    private readonly ICloudinaryService _cloudinaryService;
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly string _handoverUploadPath;
 
     public AdminService(
         IUnitOfWork uow,
-        IWebHostEnvironment env,
+        ICloudinaryService cloudinaryService,
         INotificationService notificationService,
         UserManager<ApplicationUser> userManager)
     {
         _uow = uow;
         _notificationService = notificationService;
+        _cloudinaryService = cloudinaryService;
         _userManager = userManager;
-        _handoverUploadPath = Path.Combine(env.ContentRootPath, "uploads", "handover");
     }
 
     // ── Dashboard ───────────────────────────────────────────────────────────
@@ -117,37 +116,37 @@ public class AdminService : IAdminService
 
         ValidateDisputed(booking);
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        var ownerWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.Tool.OwnerId);
-        var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
-
-        ownerWallet.Balance += booking.TotalPrice;
-        ownerWallet.UpdatedAt = DateTime.UtcNow;
-
-        renterWallet.HeldBalance -= booking.TotalPrice;
-        renterWallet.UpdatedAt = DateTime.UtcNow;
-
-        await _uow.WalletTransactions.AddAsync(new WalletTransaction
+        await _uow.ExecuteInTransactionAsync(async () =>
         {
-            WalletId = ownerWallet.Id,
-            Amount = booking.TotalPrice,
-            Type = WalletTransactionType.DisputeCredit,
-            Reference = bookingId.ToString(),
-            Description = $"Dispute resolved in owner's favor — booking #{bookingId}",
-            CreatedAt = DateTime.UtcNow
+            var ownerWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.Tool.OwnerId);
+            var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
+
+            ownerWallet.Balance += booking.TotalPrice;
+            ownerWallet.UpdatedAt = DateTime.UtcNow;
+
+            renterWallet.HeldBalance -= booking.TotalPrice;
+            renterWallet.UpdatedAt = DateTime.UtcNow;
+
+            await _uow.WalletTransactions.AddAsync(new WalletTransaction
+            {
+                WalletId = ownerWallet.Id,
+                Amount = booking.TotalPrice,
+                Type = WalletTransactionType.DisputeCredit,
+                Reference = bookingId.ToString(),
+                Description = $"Dispute resolved in owner's favor — booking #{bookingId}",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            if (booking.Payment != null)
+            {
+                booking.Payment.EscrowStatus = EscrowStatus.Released;
+                booking.Payment.PaymentStatus = PaymentStatus.Completed;
+            }
+
+            FinalizeDispute(booking, BookingStatus.Completed, dto.ResolutionNotes);
+            await CleanupHandoverImagesAsync(bookingId);
+            await _uow.SaveChangesAsync();
         });
-
-        if (booking.Payment != null)
-        {
-            booking.Payment.EscrowStatus = EscrowStatus.Released;
-            booking.Payment.PaymentStatus = PaymentStatus.Completed;
-        }
-
-        FinalizeDispute(booking, BookingStatus.Completed, dto.ResolutionNotes);
-        await CleanupHandoverImagesAsync(bookingId);
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -176,34 +175,34 @@ public class AdminService : IAdminService
 
         ValidateDisputed(booking);
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
-
-        renterWallet.Balance += booking.TotalPrice;
-        renterWallet.HeldBalance -= booking.TotalPrice;
-        renterWallet.UpdatedAt = DateTime.UtcNow;
-
-        await _uow.WalletTransactions.AddAsync(new WalletTransaction
+        await _uow.ExecuteInTransactionAsync(async () =>
         {
-            WalletId = renterWallet.Id,
-            Amount = booking.TotalPrice,
-            Type = WalletTransactionType.BookingRefund,
-            Reference = bookingId.ToString(),
-            Description = $"Dispute resolved in renter's favor — booking #{bookingId}",
-            CreatedAt = DateTime.UtcNow
+            var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
+
+            renterWallet.Balance += booking.TotalPrice;
+            renterWallet.HeldBalance -= booking.TotalPrice;
+            renterWallet.UpdatedAt = DateTime.UtcNow;
+
+            await _uow.WalletTransactions.AddAsync(new WalletTransaction
+            {
+                WalletId = renterWallet.Id,
+                Amount = booking.TotalPrice,
+                Type = WalletTransactionType.BookingRefund,
+                Reference = bookingId.ToString(),
+                Description = $"Dispute resolved in renter's favor — booking #{bookingId}",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            if (booking.Payment != null)
+            {
+                booking.Payment.EscrowStatus = EscrowStatus.Refunded;
+                booking.Payment.PaymentStatus = PaymentStatus.Refunded;
+            }
+
+            FinalizeDispute(booking, BookingStatus.Cancelled, dto.ResolutionNotes);
+            await CleanupHandoverImagesAsync(bookingId);
+            await _uow.SaveChangesAsync();
         });
-
-        if (booking.Payment != null)
-        {
-            booking.Payment.EscrowStatus = EscrowStatus.Refunded;
-            booking.Payment.PaymentStatus = PaymentStatus.Refunded;
-        }
-
-        FinalizeDispute(booking, BookingStatus.Cancelled, dto.ResolutionNotes);
-        await CleanupHandoverImagesAsync(bookingId);
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -235,51 +234,51 @@ public class AdminService : IAdminService
 
         ValidateDisputed(booking);
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        var refundAmount = Math.Round(booking.TotalPrice * (dto.RefundPercentage / 100m), 2);
-        var ownerAmount = booking.TotalPrice - refundAmount;
-
-        var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
-        var ownerWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.Tool.OwnerId);
-
-        renterWallet.Balance += refundAmount;
-        renterWallet.HeldBalance -= booking.TotalPrice;
-        renterWallet.UpdatedAt = DateTime.UtcNow;
-
-        await _uow.WalletTransactions.AddAsync(new WalletTransaction
+        await _uow.ExecuteInTransactionAsync(async () =>
         {
-            WalletId = renterWallet.Id,
-            Amount = refundAmount,
-            Type = WalletTransactionType.PartialRefund,
-            Reference = bookingId.ToString(),
-            Description = $"Partial refund ({dto.RefundPercentage}%) for dispute — booking #{bookingId}",
-            CreatedAt = DateTime.UtcNow
+            var refundAmount = Math.Round(booking.TotalPrice * (dto.RefundPercentage / 100m), 2);
+            var ownerAmount = booking.TotalPrice - refundAmount;
+
+            var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
+            var ownerWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.Tool.OwnerId);
+
+            renterWallet.Balance += refundAmount;
+            renterWallet.HeldBalance -= booking.TotalPrice;
+            renterWallet.UpdatedAt = DateTime.UtcNow;
+
+            await _uow.WalletTransactions.AddAsync(new WalletTransaction
+            {
+                WalletId = renterWallet.Id,
+                Amount = refundAmount,
+                Type = WalletTransactionType.PartialRefund,
+                Reference = bookingId.ToString(),
+                Description = $"Partial refund ({dto.RefundPercentage}%) for dispute — booking #{bookingId}",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            ownerWallet.Balance += ownerAmount;
+            ownerWallet.UpdatedAt = DateTime.UtcNow;
+
+            await _uow.WalletTransactions.AddAsync(new WalletTransaction
+            {
+                WalletId = ownerWallet.Id,
+                Amount = ownerAmount,
+                Type = WalletTransactionType.DisputeCredit,
+                Reference = bookingId.ToString(),
+                Description = $"Dispute partial resolution — {100 - dto.RefundPercentage}% of escrow — booking #{bookingId}",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            if (booking.Payment != null)
+            {
+                booking.Payment.EscrowStatus = EscrowStatus.Released;
+                booking.Payment.PaymentStatus = PaymentStatus.Completed;
+            }
+
+            FinalizeDispute(booking, BookingStatus.Completed, dto.ResolutionNotes);
+            await CleanupHandoverImagesAsync(bookingId);
+            await _uow.SaveChangesAsync();
         });
-
-        ownerWallet.Balance += ownerAmount;
-        ownerWallet.UpdatedAt = DateTime.UtcNow;
-
-        await _uow.WalletTransactions.AddAsync(new WalletTransaction
-        {
-            WalletId = ownerWallet.Id,
-            Amount = ownerAmount,
-            Type = WalletTransactionType.DisputeCredit,
-            Reference = bookingId.ToString(),
-            Description = $"Dispute partial resolution — {100 - dto.RefundPercentage}% of escrow — booking #{bookingId}",
-            CreatedAt = DateTime.UtcNow
-        });
-
-        if (booking.Payment != null)
-        {
-            booking.Payment.EscrowStatus = EscrowStatus.Released;
-            booking.Payment.PaymentStatus = PaymentStatus.Completed;
-        }
-
-        FinalizeDispute(booking, BookingStatus.Completed, dto.ResolutionNotes);
-        await CleanupHandoverImagesAsync(bookingId);
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -308,94 +307,94 @@ public class AdminService : IAdminService
 
         ValidateDisputed(booking);
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        var ownerEarning = booking.RentalCost - booking.PlatformFee;
-        var insuranceAmount = booking.InsuranceAmount;
-
-        var lateFee = 0m;
-        var returnHandover = booking.Handovers.FirstOrDefault(h => h.Type == HandoverType.Return);
-
-        if (returnHandover != null && returnHandover.SubmittedAt > booking.EndDate)
+        await _uow.ExecuteInTransactionAsync(async () =>
         {
-            var lateHours = Math.Ceiling((decimal)(returnHandover.SubmittedAt - booking.EndDate).TotalHours);
-            var hourlyRate = booking.PricePerDay / 24m;
-            lateFee = Math.Min(lateHours * hourlyRate, insuranceAmount);
-            lateFee = Math.Round(lateFee, 2);
-        }
+            var ownerEarning = booking.RentalCost - booking.PlatformFee;
+            var insuranceAmount = booking.InsuranceAmount;
 
-        var insuranceRefund = insuranceAmount - lateFee;
+            var lateFee = 0m;
+            var returnHandover = booking.Handovers.FirstOrDefault(h => h.Type == HandoverType.Return);
 
-        var ownerWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.Tool.OwnerId);
-
-        ownerWallet.Balance += ownerEarning + lateFee;
-        ownerWallet.UpdatedAt = DateTime.UtcNow;
-
-        await _uow.WalletTransactions.AddAsync(new WalletTransaction
-        {
-            WalletId = ownerWallet.Id,
-            Amount = ownerEarning,
-            Type = WalletTransactionType.EarningCredit,
-            Reference = bookingId.ToString(),
-            Description = $"Force-complete earnings for booking #{bookingId}",
-            CreatedAt = DateTime.UtcNow
-        });
-
-        if (booking.PlatformFee > 0)
-        {
-            await _uow.PlatformRevenueLedgers.AddAsync(new PlatformRevenueLedger
+            if (returnHandover != null && returnHandover.SubmittedAt > booking.EndDate)
             {
-                BookingId = booking.Id,
-                Amount = booking.PlatformFee,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
+                var lateHours = Math.Ceiling((decimal)(returnHandover.SubmittedAt - booking.EndDate).TotalHours);
+                var hourlyRate = booking.PricePerDay / 24m;
+                lateFee = Math.Min(lateHours * hourlyRate, insuranceAmount);
+                lateFee = Math.Round(lateFee, 2);
+            }
 
-        if (lateFee > 0)
-        {
+            var insuranceRefund = insuranceAmount - lateFee;
+
+            var ownerWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.Tool.OwnerId);
+
+            ownerWallet.Balance += ownerEarning + lateFee;
+            ownerWallet.UpdatedAt = DateTime.UtcNow;
+
             await _uow.WalletTransactions.AddAsync(new WalletTransaction
             {
                 WalletId = ownerWallet.Id,
-                Amount = lateFee,
-                Type = WalletTransactionType.LateFeeCredit,
+                Amount = ownerEarning,
+                Type = WalletTransactionType.EarningCredit,
                 Reference = bookingId.ToString(),
-                Description = $"Late return fee for booking #{bookingId}",
+                Description = $"Force-complete earnings for booking #{bookingId}",
                 CreatedAt = DateTime.UtcNow
             });
-        }
 
-        var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
-
-        renterWallet.HeldBalance -= booking.TotalPrice;
-        renterWallet.UpdatedAt = DateTime.UtcNow;
-
-        if (insuranceRefund > 0)
-        {
-            renterWallet.Balance += insuranceRefund;
-
-            await _uow.WalletTransactions.AddAsync(new WalletTransaction
+            if (booking.PlatformFee > 0)
             {
-                WalletId = renterWallet.Id,
-                Amount = insuranceRefund,
-                Type = WalletTransactionType.InsuranceRefund,
-                Reference = bookingId.ToString(),
-                Description = lateFee > 0
-                    ? $"Insurance refund for booking #{bookingId} (late fee of {lateFee:C} deducted)"
-                    : $"Insurance refund for force-completed booking #{bookingId}",
-                CreatedAt = DateTime.UtcNow
-            });
-        }
+                await _uow.PlatformRevenueLedgers.AddAsync(new PlatformRevenueLedger
+                {
+                    BookingId = booking.Id,
+                    Amount = booking.PlatformFee,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
 
-        if (booking.Payment != null)
-        {
-            booking.Payment.EscrowStatus = EscrowStatus.Released;
-            booking.Payment.PaymentStatus = PaymentStatus.Completed;
-        }
+            if (lateFee > 0)
+            {
+                await _uow.WalletTransactions.AddAsync(new WalletTransaction
+                {
+                    WalletId = ownerWallet.Id,
+                    Amount = lateFee,
+                    Type = WalletTransactionType.LateFeeCredit,
+                    Reference = bookingId.ToString(),
+                    Description = $"Late return fee for booking #{bookingId}",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
 
-        FinalizeDispute(booking, BookingStatus.Completed, dto.ResolutionNotes);
-        await CleanupHandoverImagesAsync(bookingId);
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
+            var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
+
+            renterWallet.HeldBalance -= booking.TotalPrice;
+            renterWallet.UpdatedAt = DateTime.UtcNow;
+
+            if (insuranceRefund > 0)
+            {
+                renterWallet.Balance += insuranceRefund;
+
+                await _uow.WalletTransactions.AddAsync(new WalletTransaction
+                {
+                    WalletId = renterWallet.Id,
+                    Amount = insuranceRefund,
+                    Type = WalletTransactionType.InsuranceRefund,
+                    Reference = bookingId.ToString(),
+                    Description = lateFee > 0
+                        ? $"Insurance refund for booking #{bookingId} (late fee of {lateFee:C} deducted)"
+                        : $"Insurance refund for force-completed booking #{bookingId}",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            if (booking.Payment != null)
+            {
+                booking.Payment.EscrowStatus = EscrowStatus.Released;
+                booking.Payment.PaymentStatus = PaymentStatus.Completed;
+            }
+
+            FinalizeDispute(booking, BookingStatus.Completed, dto.ResolutionNotes);
+            await CleanupHandoverImagesAsync(bookingId);
+            await _uow.SaveChangesAsync();
+        });
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -424,34 +423,34 @@ public class AdminService : IAdminService
 
         ValidateDisputed(booking);
 
-        await using var transaction = await _uow.BeginTransactionAsync();
-
-        var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
-
-        renterWallet.Balance += booking.TotalPrice;
-        renterWallet.HeldBalance -= booking.TotalPrice;
-        renterWallet.UpdatedAt = DateTime.UtcNow;
-
-        await _uow.WalletTransactions.AddAsync(new WalletTransaction
+        await _uow.ExecuteInTransactionAsync(async () =>
         {
-            WalletId = renterWallet.Id,
-            Amount = booking.TotalPrice,
-            Type = WalletTransactionType.BookingRefund,
-            Reference = bookingId.ToString(),
-            Description = $"Force-cancel refund for booking #{bookingId}",
-            CreatedAt = DateTime.UtcNow
+            var renterWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(booking.RenterId);
+
+            renterWallet.Balance += booking.TotalPrice;
+            renterWallet.HeldBalance -= booking.TotalPrice;
+            renterWallet.UpdatedAt = DateTime.UtcNow;
+
+            await _uow.WalletTransactions.AddAsync(new WalletTransaction
+            {
+                WalletId = renterWallet.Id,
+                Amount = booking.TotalPrice,
+                Type = WalletTransactionType.BookingRefund,
+                Reference = bookingId.ToString(),
+                Description = $"Force-cancel refund for booking #{bookingId}",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            if (booking.Payment != null)
+            {
+                booking.Payment.EscrowStatus = EscrowStatus.Refunded;
+                booking.Payment.PaymentStatus = PaymentStatus.Refunded;
+            }
+
+            FinalizeDispute(booking, BookingStatus.Cancelled, dto.ResolutionNotes);
+            await CleanupHandoverImagesAsync(bookingId);
+            await _uow.SaveChangesAsync();
         });
-
-        if (booking.Payment != null)
-        {
-            booking.Payment.EscrowStatus = EscrowStatus.Refunded;
-            booking.Payment.PaymentStatus = PaymentStatus.Refunded;
-        }
-
-        FinalizeDispute(booking, BookingStatus.Cancelled, dto.ResolutionNotes);
-        await CleanupHandoverImagesAsync(bookingId);
-        await _uow.SaveChangesAsync();
-        await transaction.CommitAsync();
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
@@ -821,6 +820,123 @@ public class AdminService : IAdminService
             .ToListAsync();
     }
 
+    // Booking-settlement transaction types whose Reference reliably points at a BookingId.
+    // (BookingDebit is excluded — its Reference holds the ToolId, set before the booking
+    // itself exists, so it cannot be traced back to a specific booking safely.)
+    private static readonly WalletTransactionType[] ReversibleTransactionTypes =
+    [
+        WalletTransactionType.EarningCredit,
+        WalletTransactionType.InsuranceRefund,
+        WalletTransactionType.BookingRefund,
+        WalletTransactionType.LateFeeCredit,
+        WalletTransactionType.PartialRefund,
+        WalletTransactionType.DisputeCredit
+    ];
+
+    public async Task<RollbackTransactionResultDto> RollbackTransactionAsync(int transactionId, RollbackTransactionRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            throw new InvalidOperationException("A reason is required to roll back a transaction.");
+
+        var original = await _uow.WalletTransactions.Query()
+            .Include(t => t.Wallet)
+            .FirstOrDefaultAsync(t => t.Id == transactionId)
+            ?? throw new KeyNotFoundException($"Transaction {transactionId} not found.");
+
+        if (!ReversibleTransactionTypes.Contains(original.Type))
+            throw new InvalidOperationException(
+                $"Transactions of type '{original.Type}' cannot be rolled back here — only booking settlement/refund credits linked to a specific booking can be reversed this way.");
+
+        if (string.IsNullOrWhiteSpace(original.Reference) || !int.TryParse(original.Reference, out var bookingId))
+            throw new InvalidOperationException("This transaction has no linked booking and cannot be rolled back automatically.");
+
+        var alreadyReversed = await _uow.WalletTransactions.Query()
+            .AnyAsync(t => t.Type == WalletTransactionType.AdminReversal && t.Reference == $"reversal:{original.Id}");
+        if (alreadyReversed)
+            throw new InvalidOperationException("This transaction has already been rolled back.");
+
+        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId)
+            ?? throw new KeyNotFoundException($"Booking {bookingId} linked to this transaction was not found.");
+
+        var receiverWallet = original.Wallet;
+        var receiverUserId = receiverWallet.UserId;
+
+        if (receiverUserId != booking.RenterId && receiverUserId != booking.Tool.OwnerId)
+            throw new InvalidOperationException("This transaction's wallet is not a party to the linked booking.");
+
+        var senderUserId = receiverUserId == booking.RenterId ? booking.Tool.OwnerId : booking.RenterId;
+        var amount = Math.Abs(original.Amount);
+
+        if (original.Amount > 0 && receiverWallet.Balance < amount)
+            throw new InvalidOperationException("The receiving wallet does not have enough balance to reverse this transaction.");
+
+        var senderWallet = await _uow.Wallets.GetOrCreateByUserIdAsync(senderUserId);
+
+        await _uow.ExecuteInTransactionAsync(async () =>
+        {
+            if (original.Amount > 0)
+            {
+                receiverWallet.Balance -= amount;
+                senderWallet.Balance += amount;
+            }
+            else
+            {
+                senderWallet.Balance -= amount;
+                receiverWallet.Balance += amount;
+            }
+
+            receiverWallet.UpdatedAt = DateTime.UtcNow;
+            senderWallet.UpdatedAt = DateTime.UtcNow;
+
+            await _uow.WalletTransactions.AddAsync(new WalletTransaction
+            {
+                WalletId = receiverWallet.Id,
+                Amount = -original.Amount,
+                Type = WalletTransactionType.AdminReversal,
+                Reference = $"reversal:{original.Id}",
+                Description = $"Admin rollback of transaction #{original.Id}: {request.Reason}",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _uow.WalletTransactions.AddAsync(new WalletTransaction
+            {
+                WalletId = senderWallet.Id,
+                Amount = original.Amount,
+                Type = WalletTransactionType.AdminReversal,
+                Reference = $"reversal:{original.Id}",
+                Description = $"Admin rollback of transaction #{original.Id}: {request.Reason}",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _uow.SaveChangesAsync();
+        });
+
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = senderUserId,
+            Title = "Transaction Reversed",
+            Message = $"An admin has reversed transaction #{original.Id} related to booking #{bookingId}. {amount:C} has been returned to your wallet.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
+        await _notificationService.CreateAsync(new CreateNotificationDto
+        {
+            UserId = receiverUserId,
+            Title = "Transaction Reversed",
+            Message = $"An admin has reversed transaction #{original.Id} related to booking #{bookingId}. {amount:C} has been deducted from your wallet.",
+            Type = NotificationType.DisputeResolved,
+            Url = $"/bookings/{bookingId}"
+        });
+
+        return new RollbackTransactionResultDto(
+            OriginalTransactionId: original.Id,
+            SenderUserId: senderUserId,
+            ReceiverUserId: receiverUserId,
+            Amount: amount,
+            Reason: request.Reason,
+            CreatedAt: DateTime.UtcNow);
+    }
+
     // ── Private Helpers ─────────────────────────────────────────────────────
 
     private static void ValidateDisputed(Booking booking)
@@ -848,11 +964,13 @@ public class AdminService : IAdminService
                      ?? new List<HandoverImage>();
 
         foreach (var image in images)
+        {
+            if (!string.IsNullOrEmpty(image.PublicId))
+            {
+                await _cloudinaryService.DeleteImageAsync(image.PublicId);
+            }
             _uow.HandoverImages.Remove(image);
-
-        var folderPath = Path.Combine(_handoverUploadPath, bookingId.ToString());
-        if (Directory.Exists(folderPath))
-            Directory.Delete(folderPath, recursive: true);
+        }
     }
 
     private static BookingDto MapToDto(Booking b)

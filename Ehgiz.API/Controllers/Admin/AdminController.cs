@@ -243,6 +243,14 @@ public class AdminController : ControllerBase
         return Ok(ApiResponse<IEnumerable<AdminWalletTransactionDto>>.Success(result));
     }
 
+    // POST api/admin/transactions/{id}/rollback
+    [HttpPost("transactions/{id:int}/rollback")]
+    public async Task<IActionResult> RollbackTransaction(int id, [FromBody] RollbackTransactionRequest dto)
+    {
+        var result = await _adminService.RollbackTransactionAsync(id, dto);
+        return Ok(ApiResponse<RollbackTransactionResultDto>.Success(result, $"Transaction #{id} has been rolled back."));
+    }
+
     // ── Platform Settings ─────────────────────────────────────────────────────
 
     // GET api/admin/settings/platform-fee

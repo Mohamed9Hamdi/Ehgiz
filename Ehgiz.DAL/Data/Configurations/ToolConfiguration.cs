@@ -17,7 +17,7 @@ public class ToolConfiguration : IEntityTypeConfiguration<Tool>
             .HasMaxLength(200);
 
         builder.Property(t => t.Description)
-            .HasColumnType("text");
+            .HasColumnType("nvarchar(max)");
 
         builder.Property(t => t.PricePerDay)
             .HasColumnType("decimal(18,2)");

@@ -16,6 +16,10 @@ public class ToolImageConfiguration : IEntityTypeConfiguration<ToolImage>
             .IsRequired()
             .HasMaxLength(500);
 
+        builder.Property(ti => ti.PublicId)
+            .IsRequired()
+            .HasMaxLength(250);
+
         builder.HasOne(ti => ti.Tool)
             .WithMany(t => t.Images)
             .HasForeignKey(ti => ti.ToolId)

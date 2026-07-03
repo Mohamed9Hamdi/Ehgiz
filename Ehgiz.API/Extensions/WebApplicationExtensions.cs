@@ -1,7 +1,6 @@
 using Ehgiz.API.Hubs;
 using Ehgiz.API.Middleware;
 using Ehgiz.Application.Seed;
-using Microsoft.Extensions.FileProviders;
 
 namespace Ehgiz.API.Extensions;
 
@@ -31,14 +30,6 @@ public static class WebApplicationExtensions
         app.UseCors("Angular");
         app.UseAuthentication();
         app.UseAuthorization();
-
-        var uploadsRoot = Path.Combine(app.Environment.ContentRootPath, "uploads");
-        Directory.CreateDirectory(uploadsRoot);
-        app.UseStaticFiles(new StaticFileOptions
-        {
-            FileProvider = new PhysicalFileProvider(uploadsRoot),
-            RequestPath = "/uploads"
-        });
 
         return app;
     }
