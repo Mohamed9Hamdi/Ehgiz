@@ -27,17 +27,20 @@ public class ToolPhotoSearchService : IToolPhotoSearchService
 
     private readonly ChatClient _chatClient;
     private readonly IUnitOfWork _uow;
+    private readonly AiSettings _aiSettings;
     private readonly GitHubModelsSettings _settings;
     private readonly ILogger<ToolPhotoSearchService> _logger;
 
     public ToolPhotoSearchService(
         ChatClient chatClient,
         IUnitOfWork uow,
+        IOptions<AiSettings> aiSettings,
         IOptions<GitHubModelsSettings> settings,
         ILogger<ToolPhotoSearchService> logger)
     {
         _chatClient = chatClient;
         _uow = uow;
+        _aiSettings = aiSettings.Value;
         _settings = settings.Value;
         _logger = logger;
     }
@@ -48,8 +51,8 @@ public class ToolPhotoSearchService : IToolPhotoSearchService
         int pageSize = 10,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_settings.ApiKey))
-            throw new InvalidOperationException("GitHub Models API key is not configured.");
+        if (string.IsNullOrWhiteSpace(_aiSettings.ApiKey))
+            throw new InvalidOperationException("AI API key is not configured.");
 
         AiImageValidator.Validate(images, _settings);
 

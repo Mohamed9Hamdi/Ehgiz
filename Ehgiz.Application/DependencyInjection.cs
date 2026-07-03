@@ -39,13 +39,14 @@ public static class DependencyInjection
         services.Configure<GitHubModelsSettings>(configuration.GetSection("GitHubModels"));
         services.AddSingleton(sp =>
         {
-            var settings = sp.GetRequiredService<IOptions<GitHubModelsSettings>>().Value;
+            var aiSettings = sp.GetRequiredService<IOptions<AiSettings>>().Value;
+            var githubModelsSettings = sp.GetRequiredService<IOptions<GitHubModelsSettings>>().Value;
             return new ChatClient(
-                model: settings.Model,
-                credential: new ApiKeyCredential(settings.ApiKey ?? string.Empty),
+                model: githubModelsSettings.Model,
+                credential: new ApiKeyCredential(aiSettings.ApiKey ?? string.Empty),
                 options: new OpenAIClientOptions
                 {
-                    Endpoint = new Uri(settings.BaseUrl.TrimEnd('/'))
+                    Endpoint = new Uri(aiSettings.Endpoint.TrimEnd('/'))
                 });
         });
         services.AddScoped<IToolSuggestionService, ToolSuggestionService>();

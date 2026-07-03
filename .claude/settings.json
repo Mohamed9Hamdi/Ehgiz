@@ -7,7 +7,8 @@
       "Bash(dotnet list *)",
       "Bash(dotnet test *)",
       "Bash(xargs grep -l \"Fact\\\\|Theory\")",
-      "Bash(echo \"---exit:$?\")"
+      "Bash(echo \"---exit:$?\")",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
