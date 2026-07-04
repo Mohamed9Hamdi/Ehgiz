@@ -12,6 +12,14 @@
 .env
 *.env
 
+# AI assistant tool folders (local only)
+.claude/
+.codex/
+.agents/
+
+# Temporary verify-build output
+.verify-build*/
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
