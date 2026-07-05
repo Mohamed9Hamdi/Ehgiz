@@ -29,6 +29,9 @@ public interface IToolService
  
     Task DeleteImageAsync(int imageId, int ownerId);
 
+
+    Task SetPrimaryImageAsync(int imageId, int ownerId);
+
  
     Task<List<ToolDto>> GetByOwnerAsync(int ownerId);
 }

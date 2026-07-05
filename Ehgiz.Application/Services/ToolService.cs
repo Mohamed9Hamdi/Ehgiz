@@ -31,6 +31,9 @@ public class ToolService : IToolService
         if (filter.CategoryId.HasValue)
             query = query.Where(t => t.CategoryId == filter.CategoryId);
 
+        if (filter.Condition.HasValue)
+            query = query.Where(t => t.Condition == filter.Condition);
+
         if (!string.IsNullOrWhiteSpace(filter.Location))
             query = query.Where(t => t.Location!.Contains(filter.Location));
 
@@ -128,6 +131,8 @@ public class ToolService : IToolService
             throw new ValidationException("No images provided");
 
         var urls = new List<string>();
+        var hasPrimary = await _uow.ToolImages.Query()
+            .AnyAsync(i => i.ToolId == toolId && i.IsPrimary);
 
         foreach (var img in images)
         {
@@ -138,8 +143,11 @@ public class ToolService : IToolService
             {
                 ToolId = toolId,
                 ImageUrl = uploadResult.ImageUrl,
-                PublicId = uploadResult.PublicId
+                PublicId = uploadResult.PublicId,
+                IsPrimary = !hasPrimary
             });
+
+            hasPrimary = true;
         }
 
         await _uow.SaveChangesAsync();
@@ -160,6 +168,36 @@ public class ToolService : IToolService
         }
 
         _uow.ToolImages.Remove(image);
+
+        if (image.IsPrimary)
+        {
+            var nextPrimary = await _uow.ToolImages.Query()
+                .Where(i => i.ToolId == image.ToolId && i.Id != image.Id)
+                .OrderBy(i => i.Id)
+                .FirstOrDefaultAsync();
+
+            if (nextPrimary is not null)
+                nextPrimary.IsPrimary = true;
+        }
+
+        await _uow.SaveChangesAsync();
+    }
+
+    public async Task SetPrimaryImageAsync(int imageId, int ownerId)
+    {
+        var image = await _uow.ToolImages.GetByIdWithToolAsync(imageId)
+            ?? throw new KeyNotFoundException($"Image {imageId} not found");
+
+        if (image.Tool.OwnerId != ownerId)
+            throw new UnauthorizedAccessException("Not your image");
+
+        var siblings = await _uow.ToolImages.Query()
+            .Where(i => i.ToolId == image.ToolId)
+            .ToListAsync();
+
+        foreach (var sibling in siblings)
+            sibling.IsPrimary = sibling.Id == imageId;
+
         await _uow.SaveChangesAsync();
     }
 

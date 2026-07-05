@@ -1,8 +1,11 @@
+using Ehgiz.DAL.Enums;
+
 namespace Ehgiz.Application.DTOs.Tools;
 
 public class ToolFilterDto
 {
     public int? CategoryId { get; set; }
+    public ToolCondition? Condition { get; set; }
     public string? Location { get; set; }
     public decimal? MinPrice { get; set; }
     public decimal? MaxPrice { get; set; }

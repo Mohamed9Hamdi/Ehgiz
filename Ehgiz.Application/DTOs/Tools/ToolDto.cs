@@ -20,4 +20,5 @@ public class ToolDto
     public string CategoryName { get; set; } = null!;
 
     public List<string> ImageUrls { get; set; } = [];
+    public List<ToolImageDto> Images { get; set; } = [];
 }

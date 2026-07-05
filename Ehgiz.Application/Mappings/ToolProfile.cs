@@ -16,13 +16,21 @@ public class ToolProfile : IRegister
             .Map(dest => dest.OwnerProfileImageUrl, src => src.Owner.ProfileImageUrl)
             .Map(dest => dest.CategoryName, src => src.Category.Name)
             .Map(dest => dest.Condition, src => src.Condition.HasValue ? src.Condition.Value.ToString() : null)
-            .Map(dest => dest.ImageUrls, src => src.Images.Select(i => i.ImageUrl).ToList());
+            .Map(dest => dest.ImageUrls, src => src.Images
+                .OrderByDescending(i => i.IsPrimary).ThenBy(i => i.Id)
+                .Select(i => i.ImageUrl).ToList())
+            .Map(dest => dest.Images, src => src.Images
+                .OrderByDescending(i => i.IsPrimary).ThenBy(i => i.Id)
+                .Select(i => new ToolImageDto { Id = i.Id, ImageUrl = i.ImageUrl, IsPrimary = i.IsPrimary })
+                .ToList());
 
        
         config.NewConfig<Tool, AdminListingDto>()
             .Map(dest => dest.CategoryName, src => src.Category.Name)
             .Map(dest => dest.OwnerName, src => src.Owner.FullName)
-            .Map(dest => dest.FirstImageUrl, src => src.Images.OrderBy(i => i.Id).Select(i => i.ImageUrl).FirstOrDefault())
+            .Map(dest => dest.FirstImageUrl, src => src.Images
+                .OrderByDescending(i => i.IsPrimary).ThenBy(i => i.Id)
+                .Select(i => i.ImageUrl).FirstOrDefault())
             .Map(dest => dest.Condition, src => src.Condition.HasValue ? src.Condition.Value.ToString() : null);
 
         config.NewConfig<CreateToolDto, Tool>()

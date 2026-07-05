@@ -156,4 +156,13 @@ public class ToolsController : ControllerBase
         await _toolService.DeleteImageAsync(imageId, CurrentUserId);
         return NoContent();
     }
+
+
+    [HttpPut("images/{imageId:int}/primary")]
+    [Authorize]
+    public async Task<IActionResult> SetPrimaryImage(int imageId)
+    {
+        await _toolService.SetPrimaryImageAsync(imageId, CurrentUserId);
+        return NoContent();
+    }
 }
