@@ -12,6 +12,10 @@ public class ToolFilterDto
     public bool? IsAvailable { get; set; }
     public string? SearchTerm { get; set; }
 
+    public double? NearLat { get; set; }
+    public double? NearLng { get; set; }
+    public double? RadiusKm { get; set; }
+
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 10;
 }

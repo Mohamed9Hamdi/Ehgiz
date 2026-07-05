@@ -39,6 +39,14 @@ public class WalletController : ControllerBase
         return Ok(ApiResponse<IEnumerable<WalletTransactionDto>>.Success(result));
     }
 
+    // GET api/wallet/earnings?months=12
+    [HttpGet("earnings")]
+    public async Task<IActionResult> GetEarnings([FromQuery] int months = 12)
+    {
+        var result = await _walletService.GetEarningsAsync(CurrentUserId, months);
+        return Ok(ApiResponse<IReadOnlyList<MonthlyEarningsDto>>.Success(result));
+    }
+
     // POST api/wallet/topup
     [HttpPost("topup")]
     public async Task<IActionResult> InitiateTopUp([FromBody] TopUpRequest dto)

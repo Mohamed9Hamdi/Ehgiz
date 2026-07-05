@@ -11,5 +11,6 @@ public enum NotificationType
     HandoverPending = 7,
     HandoverAccepted = 8,
     HandoverDisputed = 9,
-    DisputeResolved = 10
+    DisputeResolved = 10,
+    SavedSearchMatch = 11
 }

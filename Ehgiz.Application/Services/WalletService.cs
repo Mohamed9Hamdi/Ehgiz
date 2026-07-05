@@ -107,6 +107,47 @@ public class WalletService : IWalletService
             .ToListAsync();
     }
 
+    public async Task<IReadOnlyList<MonthlyEarningsDto>> GetEarningsAsync(int userId, int months)
+    {
+        months = Math.Clamp(months, 1, 60);
+
+        var now = DateTime.UtcNow;
+        var start = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc)
+            .AddMonths(-(months - 1));
+
+        // Net earnings are what actually hit the owner's wallet; platform fees
+        // are recorded per booking in the revenue ledger. Gross = net + fees.
+        var net = await _uow.WalletTransactions.Query()
+            .Where(t => t.Wallet.UserId == userId
+                && t.Type == WalletTransactionType.EarningCredit
+                && t.CreatedAt >= start)
+            .GroupBy(t => new { t.CreatedAt.Year, t.CreatedAt.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(t => t.Amount) })
+            .ToListAsync();
+
+        var fees = await _uow.PlatformRevenueLedgers.Query()
+            .Where(r => r.Booking.Tool.OwnerId == userId && r.CreatedAt >= start)
+            .GroupBy(r => new { r.CreatedAt.Year, r.CreatedAt.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(r => r.Amount) })
+            .ToListAsync();
+
+        var result = new List<MonthlyEarningsDto>(months);
+        for (var i = 0; i < months; i++)
+        {
+            var month = start.AddMonths(i);
+            var netTotal = net.FirstOrDefault(x => x.Year == month.Year && x.Month == month.Month)?.Total ?? 0m;
+            var feeTotal = fees.FirstOrDefault(x => x.Year == month.Year && x.Month == month.Month)?.Total ?? 0m;
+
+            result.Add(new MonthlyEarningsDto(
+                Month: month.ToString("yyyy-MM"),
+                Gross: netTotal + feeTotal,
+                Fees: feeTotal,
+                Net: netTotal));
+        }
+
+        return result;
+    }
+
     public async Task<ConnectOnboardingResponse> GetConnectOnboardingUrlAsync(
         int userId, string returnUrl, string refreshUrl)
     {

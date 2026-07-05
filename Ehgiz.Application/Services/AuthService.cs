@@ -16,6 +16,11 @@ namespace Ehgiz.Application.Services;
 
 public class AuthService : IAuthService
 {
+    private const int MaxResetCodeAttempts = 5;
+    private const int MaxResetRequestsPerWindow = 3;
+    private static readonly TimeSpan ResetRequestWindow = TimeSpan.FromMinutes(15);
+    private const string GenericResetCodeMessage = "If an account exists, a password reset code was sent.";
+
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IUnitOfWork _uow;
@@ -233,58 +238,38 @@ public class AuthService : IAuthService
 
     public async Task<ForgotPasswordResultDTO> ForgotPasswordAsync(ForgotPasswordRequestDTO dto)
     {
-        var user = await _userManager.FindByEmailAsync(dto.Email);
-        if (user is null)
-        {
-            return new ForgotPasswordResultDTO(
-                true,
-                "If a verified account exists, a password reset code was sent.",
-                []);
-        }
+        // Always return the same generic success so responses never reveal
+        // whether an account exists (or is unverified / rate limited).
+        await IssueResetCodeIfAllowedAsync(dto.Email);
 
-        if (!user.EmailConfirmed)
-        {
-            return new ForgotPasswordResultDTO(
-                false,
-                "Please verify your email before resetting your password.",
-                []);
-        }
-
-        await InvalidateActiveResetCodesAsync(user.Id);
-        await CreateAndSendPasswordResetCodeAsync(user);
-
-        return new ForgotPasswordResultDTO(
-            true,
-            "Password reset code sent.",
-            []);
+        return new ForgotPasswordResultDTO(true, GenericResetCodeMessage, []);
     }
 
     public async Task<ResendResetCodeResultDTO> ResendResetCodeAsync(ResendResetCodeRequestDTO dto)
     {
-        var user = await _userManager.FindByEmailAsync(dto.Email);
-        if (user is null)
-        {
-            return new ResendResetCodeResultDTO(
-                true,
-                "If a verified account exists, a password reset code was sent.",
-                []);
-        }
+        await IssueResetCodeIfAllowedAsync(dto.Email);
 
-        if (!user.EmailConfirmed)
+        return new ResendResetCodeResultDTO(true, GenericResetCodeMessage, []);
+    }
+
+    private async Task IssueResetCodeIfAllowedAsync(string email)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user is null || !user.EmailConfirmed)
+            return;
+
+        var windowStart = DateTime.UtcNow.Subtract(ResetRequestWindow);
+        var recentRequests = await _uow.PasswordResetCodes.CountAsync(c =>
+            c.UserId == user.Id && c.CreatedAt >= windowStart);
+
+        if (recentRequests >= MaxResetRequestsPerWindow)
         {
-            return new ResendResetCodeResultDTO(
-                false,
-                "Please verify your email before resetting your password.",
-                []);
+            _logger.LogWarning("Password reset rate limit reached for user {UserId}", user.Id);
+            return;
         }
 
         await InvalidateActiveResetCodesAsync(user.Id);
         await CreateAndSendPasswordResetCodeAsync(user);
-
-        return new ResendResetCodeResultDTO(
-            true,
-            "Reset code sent.",
-            []);
     }
 
     public async Task<ResetPasswordResultDTO> ResetPasswordAsync(ResetPasswordRequestDTO dto)
@@ -299,10 +284,23 @@ public class AuthService : IAuthService
         }
 
         var hash = _tokenService.HashToken(dto.Code.Trim());
-        var stored = await _uow.PasswordResetCodes.GetByUserAndHashAsync(user.Id, hash);
+        var activeCodes = await _uow.PasswordResetCodes.GetActiveByUserIdAsync(user.Id);
+        var stored = activeCodes.FirstOrDefault(c => c.CodeHash == hash);
 
-        if (stored is null || !stored.IsActive)
+        if (stored is null)
         {
+            // Wrong code: count the attempt against the user's active code(s)
+            // and burn them once the attempt budget is spent.
+            foreach (var code in activeCodes)
+            {
+                code.AttemptCount++;
+                if (code.AttemptCount >= MaxResetCodeAttempts)
+                    code.UsedAt = DateTime.UtcNow;
+            }
+
+            if (activeCodes.Count > 0)
+                await _uow.SaveChangesAsync();
+
             return new ResetPasswordResultDTO(
                 false,
                 "Invalid or expired reset code.",

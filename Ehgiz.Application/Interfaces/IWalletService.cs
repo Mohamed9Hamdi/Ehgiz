@@ -10,5 +10,6 @@ public interface IWalletService
     Task<IEnumerable<WalletTransactionDto>> GetTransactionHistoryAsync(int userId);
     Task<ConnectOnboardingResponse> GetConnectOnboardingUrlAsync(int userId, string returnUrl, string refreshUrl);
     Task WithdrawAsync(int userId, WithdrawalRequest request);
+    Task<IReadOnlyList<MonthlyEarningsDto>> GetEarningsAsync(int userId, int months);
 }
 

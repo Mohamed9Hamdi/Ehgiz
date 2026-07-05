@@ -26,6 +26,7 @@ public interface IUnitOfWork : IAsyncDisposable
     IRepository<Ehgiz.DAL.Entities.HandoverImage> HandoverImages { get; }
     IRepository<Ehgiz.DAL.Entities.PlatformRevenueLedger> PlatformRevenueLedgers { get; }
     IRepository<Ehgiz.DAL.Entities.SystemSetting> SystemSettings { get; }
+    IRepository<Ehgiz.DAL.Entities.SavedSearch> SavedSearches { get; }
     Task<int> SaveChangesAsync();
 
     // Runs operation inside a transaction via the configured execution strategy, so it composes with EnableRetryOnFailure.

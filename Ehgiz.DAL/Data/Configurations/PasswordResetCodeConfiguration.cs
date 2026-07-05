@@ -19,6 +19,10 @@ public class PasswordResetCodeConfiguration : IEntityTypeConfiguration<PasswordR
         builder.HasIndex(c => c.CodeHash)
             .IsUnique();
 
+        builder.Property(c => c.AttemptCount)
+            .IsRequired()
+            .HasDefaultValue(0);
+
         builder.Property(c => c.CreatedAt)
             .IsRequired();
 

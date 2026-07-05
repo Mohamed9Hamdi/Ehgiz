@@ -9,6 +9,9 @@ public class ToolDto
     public decimal InsurancePrice { get; set; }
     public string? Condition { get; set; }
     public string? Location { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public double? DistanceKm { get; set; }
     public bool IsAvailable { get; set; }
     public DateTime CreatedAt { get; set; }
 

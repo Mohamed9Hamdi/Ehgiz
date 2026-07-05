@@ -30,6 +30,7 @@ public class EhgizDbContext : IdentityDbContext<ApplicationUser, IdentityRole<in
     public DbSet<HandoverImage> HandoverImages => Set<HandoverImage>();
     public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
     public DbSet<PasswordResetCode> PasswordResetCodes => Set<PasswordResetCode>();
+    public DbSet<SavedSearch> SavedSearches => Set<SavedSearch>();
 
     public DbSet<PlatformRevenueLedger> PlatformRevenueLedgers => Set<PlatformRevenueLedger>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();

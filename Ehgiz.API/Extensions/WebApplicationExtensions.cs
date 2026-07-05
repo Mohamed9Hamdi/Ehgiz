@@ -31,6 +31,7 @@ public static class WebApplicationExtensions
             app.UseHttpsRedirection();
 
         app.UseCors("Angular");
+        app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
 

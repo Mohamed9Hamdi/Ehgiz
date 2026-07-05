@@ -7,6 +7,7 @@ using Ehgiz.Application.Services;
 using MapsterMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Ehgiz.API.Controllers;
 
@@ -117,6 +118,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("forgot-password")]
+    [EnableRateLimiting("password-reset")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDTO dto)
     {
         var result = await _authService.ForgotPasswordAsync(dto);
@@ -132,6 +134,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("resend-reset-code")]
+    [EnableRateLimiting("password-reset")]
     public async Task<IActionResult> ResendResetCode([FromBody] ResendResetCodeRequestDTO dto)
     {
         var result = await _authService.ResendResetCodeAsync(dto);

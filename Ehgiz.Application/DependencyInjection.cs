@@ -75,6 +75,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IToolAssistantService, ToolAssistantAgentService>();
+        services.AddScoped<ISavedSearchService, SavedSearchService>();
 
         return services;
     }

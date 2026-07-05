@@ -16,7 +16,7 @@ public static class AuthenticationExtensions
     {
         services.AddIdentity<ApplicationUser, IdentityRole<int>>(options =>
         {
-            options.Password.RequiredLength = 7;
+            options.Password.RequiredLength = 8;
             options.Password.RequireDigit = true;
             options.Password.RequireUppercase = false;
             options.Password.RequireLowercase = true;

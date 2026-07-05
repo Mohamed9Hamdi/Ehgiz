@@ -7,6 +7,7 @@ using Mapster;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.ComponentModel.DataAnnotations;
 
 namespace Ehgiz.Application.Services;
@@ -16,12 +17,21 @@ public class ToolService : IToolService
     private readonly IUnitOfWork _uow;
     private readonly ICloudinaryService _cloudinaryService;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ISavedSearchService _savedSearchService;
+    private readonly ILogger<ToolService> _logger;
 
-    public ToolService(IUnitOfWork uow, ICloudinaryService cloudinaryService, IHttpContextAccessor httpContextAccessor)
+    public ToolService(
+        IUnitOfWork uow,
+        ICloudinaryService cloudinaryService,
+        IHttpContextAccessor httpContextAccessor,
+        ISavedSearchService savedSearchService,
+        ILogger<ToolService> logger)
     {
         _uow = uow;
         _cloudinaryService = cloudinaryService;
         _httpContextAccessor = httpContextAccessor;
+        _savedSearchService = savedSearchService;
+        _logger = logger;
     }
 
     public async Task<PagedResult<ToolDto>> GetAllAsync(ToolFilterDto filter)
@@ -51,14 +61,52 @@ public class ToolService : IToolService
                 t.Name.Contains(filter.SearchTerm) ||
                 (t.Description != null && t.Description.Contains(filter.SearchTerm)));
 
+        var nearSearch = filter.NearLat.HasValue && filter.NearLng.HasValue;
+        if (nearSearch)
+        {
+            var lat = filter.NearLat!.Value;
+            var lng = filter.NearLng!.Value;
+
+            query = query.Where(t => t.Latitude != null && t.Longitude != null);
+
+            if (filter.RadiusKm.HasValue)
+            {
+                var radiusKm = filter.RadiusKm.Value;
+                query = query.Where(t =>
+                    EarthDiameterKm * Math.Asin(Math.Sqrt(
+                        Math.Pow(Math.Sin((t.Latitude!.Value - lat) * Math.PI / 360.0), 2) +
+                        Math.Cos(lat * Math.PI / 180.0) * Math.Cos(t.Latitude.Value * Math.PI / 180.0) *
+                        Math.Pow(Math.Sin((t.Longitude!.Value - lng) * Math.PI / 360.0), 2))) <= radiusKm);
+            }
+
+            query = query.OrderBy(t =>
+                EarthDiameterKm * Math.Asin(Math.Sqrt(
+                    Math.Pow(Math.Sin((t.Latitude!.Value - lat) * Math.PI / 360.0), 2) +
+                    Math.Cos(lat * Math.PI / 180.0) * Math.Cos(t.Latitude.Value * Math.PI / 180.0) *
+                    Math.Pow(Math.Sin((t.Longitude!.Value - lng) * Math.PI / 360.0), 2))));
+        }
+        else
+        {
+            query = query.OrderByDescending(t => t.CreatedAt);
+        }
+
         var totalCount = await query.CountAsync();
 
         var items = await query
-            .OrderByDescending(t => t.CreatedAt)
             .Skip((filter.Page - 1) * filter.PageSize)
             .Take(filter.PageSize)
             .ProjectToType<ToolDto>()
             .ToListAsync();
+
+        if (nearSearch)
+        {
+            foreach (var item in items.Where(i => i.Latitude.HasValue && i.Longitude.HasValue))
+            {
+                item.DistanceKm = Math.Round(HaversineKm(
+                    filter.NearLat!.Value, filter.NearLng!.Value,
+                    item.Latitude!.Value, item.Longitude!.Value), 2);
+            }
+        }
 
         return new PagedResult<ToolDto>
         {
@@ -67,6 +115,22 @@ public class ToolService : IToolService
             PageNumber = filter.Page,
             PageSize = filter.PageSize
         };
+    }
+
+    private const double EarthDiameterKm = 12742.0;
+
+    private static double HaversineKm(double lat1, double lng1, double lat2, double lng2)
+    {
+        return EarthDiameterKm * Math.Asin(Math.Sqrt(
+            Math.Pow(Math.Sin((lat2 - lat1) * Math.PI / 360.0), 2) +
+            Math.Cos(lat1 * Math.PI / 180.0) * Math.Cos(lat2 * Math.PI / 180.0) *
+            Math.Pow(Math.Sin((lng2 - lng1) * Math.PI / 360.0), 2)));
+    }
+
+    private static void ValidateCoordinates(double? latitude, double? longitude)
+    {
+        if (latitude.HasValue != longitude.HasValue)
+            throw new ValidationException("Latitude and longitude must be provided together.");
     }
 
     public async Task<ToolDto> GetByIdAsync(int id)
@@ -84,11 +148,22 @@ public class ToolService : IToolService
         if (categoryCount == 0)
             throw new KeyNotFoundException($"Category {dto.CategoryId} not found");
 
+        ValidateCoordinates(dto.Latitude, dto.Longitude);
+
         var tool = dto.Adapt<Tool>();
         tool.OwnerId = ownerId;
 
         await _uow.Tools.AddAsync(tool);
         await _uow.SaveChangesAsync();
+
+        try
+        {
+            await _savedSearchService.NotifyMatchesAsync(tool.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to notify saved-search matches for tool {ToolId}", tool.Id);
+        }
 
         return await GetByIdAsync(tool.Id);
     }
@@ -100,6 +175,8 @@ public class ToolService : IToolService
 
         if (tool.OwnerId != ownerId)
             throw new UnauthorizedAccessException("Not your tool");
+
+        ValidateCoordinates(dto.Latitude, dto.Longitude);
 
         dto.Adapt(tool);
 

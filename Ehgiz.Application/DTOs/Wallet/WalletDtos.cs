@@ -26,3 +26,9 @@ public record WalletTransactionDto(
     DateTime CreatedAt);
 
 public record ConnectOnboardingResponse(string OnboardingUrl);
+
+public record MonthlyEarningsDto(
+    string Month,
+    decimal Gross,
+    decimal Fees,
+    decimal Net);

@@ -36,6 +36,7 @@ public class UnitOfWork : IUnitOfWork
         HandoverImages = new Repository<HandoverImage>(context);
         PlatformRevenueLedgers = new Repository<PlatformRevenueLedger>(context);
         SystemSettings = new Repository<SystemSetting>(context);
+        SavedSearches = new Repository<SavedSearch>(context);
         Users = users;
         Categories = categories;
         Tools = tools;
@@ -94,6 +95,8 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<PlatformRevenueLedger> PlatformRevenueLedgers { get; }
 
     public IRepository<SystemSetting> SystemSettings { get; }
+
+    public IRepository<SavedSearch> SavedSearches { get; }
 
     public IPasswordResetCodeRepository PasswordResetCodes { get; }
 

@@ -13,6 +13,8 @@ public class Tool
     public decimal InsurancePrice { get; set; }
     public ToolCondition? Condition { get; set; }
     public string? Location { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public bool IsAvailable { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
