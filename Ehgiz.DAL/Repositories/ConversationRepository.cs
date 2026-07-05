@@ -21,14 +21,42 @@ public class ConversationRepository : Repository<Conversation>, IConversationRep
 
     public async Task<IReadOnlyList<Conversation>> GetByUserIdWithDetailsAsync(int userId)
     {
-        return await _context.Conversations
+        var conversations = await _context.Conversations
             .Where(c => c.User1Id == userId || c.User2Id == userId)
             .Include(c => c.User1)
             .Include(c => c.User2)
-            .Include(c => c.Messages.OrderByDescending(m => m.CreatedAt).Take(1))
-                .ThenInclude(m => m.Sender)
             .OrderByDescending(c => c.UpdatedAt)
             .AsNoTracking()
             .ToListAsync();
+
+        if (conversations.Count == 0)
+            return conversations;
+
+        var ids = conversations.Select(c => c.Id).ToList();
+
+        // Latest message per conversation. Max(Id) is used instead of a
+        // filtered Include(...Take(1)) because that needs the APPLY operator,
+        // which SQLite doesn't support; ids are identity-ordered so the max id
+        // is the newest message.
+        var lastMessageIds = await _context.Messages
+            .Where(m => ids.Contains(m.ConversationId))
+            .GroupBy(m => m.ConversationId)
+            .Select(g => g.Max(m => m.Id))
+            .ToListAsync();
+
+        var lastMessages = await _context.Messages
+            .Include(m => m.Sender)
+            .Where(m => lastMessageIds.Contains(m.Id))
+            .AsNoTracking()
+            .ToListAsync();
+
+        foreach (var conversation in conversations)
+        {
+            conversation.Messages = lastMessages
+                .Where(m => m.ConversationId == conversation.Id)
+                .ToList();
+        }
+
+        return conversations;
     }
 }

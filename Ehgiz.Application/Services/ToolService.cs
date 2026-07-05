@@ -254,7 +254,12 @@ public class ToolService : IToolService
                 .FirstOrDefaultAsync();
 
             if (nextPrimary is not null)
+            {
+                // Query() is no-tracking, so re-attach before mutating or the
+                // promotion is silently dropped on SaveChanges.
                 nextPrimary.IsPrimary = true;
+                _uow.ToolImages.Update(nextPrimary);
+            }
         }
 
         await _uow.SaveChangesAsync();
@@ -268,12 +273,20 @@ public class ToolService : IToolService
         if (image.Tool.OwnerId != ownerId)
             throw new UnauthorizedAccessException("Not your image");
 
+        // Query() is no-tracking, so re-attach changed siblings or the update
+        // is silently dropped on SaveChanges. The target image is already
+        // tracked via GetByIdWithToolAsync, so it is excluded from the query.
         var siblings = await _uow.ToolImages.Query()
-            .Where(i => i.ToolId == image.ToolId)
+            .Where(i => i.ToolId == image.ToolId && i.Id != imageId)
             .ToListAsync();
 
-        foreach (var sibling in siblings)
-            sibling.IsPrimary = sibling.Id == imageId;
+        foreach (var sibling in siblings.Where(s => s.IsPrimary))
+        {
+            sibling.IsPrimary = false;
+            _uow.ToolImages.Update(sibling);
+        }
+
+        image.IsPrimary = true;
 
         await _uow.SaveChangesAsync();
     }
