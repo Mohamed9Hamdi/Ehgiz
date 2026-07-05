@@ -1,4 +1,4 @@
-using Ehgiz.Application.DTOs.Notifications;
+﻿using Ehgiz.Application.DTOs.Notifications;
 using Ehgiz.Application.DTOs.Wallet;
 using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Services;
@@ -95,6 +95,26 @@ public class WalletServiceTests : IAsyncLifetime
 
         await _notifications.Received(1).CreateAsync(Arg.Is<CreateNotificationDto>(n =>
             n.UserId == _user.Id && n.Type == NotificationType.Payment));
+    }
+
+    [Fact]
+    public async Task CreditWalletFromStripeAsync_IgnoresDuplicateWebhookDelivery()
+    {
+        await _db.SeedWalletAsync(_user.Id, balance: 10m);
+
+        await _sut.CreditWalletFromStripeAsync("cs_session_dup", _user.Id, 40m);
+        await _sut.CreditWalletFromStripeAsync("cs_session_dup", _user.Id, 40m);
+
+        var wallet = _db.Context.Wallets.Single(w => w.UserId == _user.Id);
+        Assert.Equal(50m, wallet.Balance);
+        Assert.Single(_db.Context.WalletTransactions.Where(t => t.WalletId == wallet.Id).ToList());
+    }
+
+    [Fact]
+    public async Task InitiateTopUpAsync_RejectsNonUsdCurrency()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.InitiateTopUpAsync(_user.Id, new TopUpRequest(50m, "eur"), "https://return"));
     }
 
     // ── GetTransactionHistoryAsync ──────────────────────────────────────────
@@ -209,6 +229,9 @@ public class WalletServiceTests : IAsyncLifetime
 
         await _stripe.Received(1).TransferToConnectAccountAsync("acct_1", 60m, "usd", Arg.Any<string>());
 
+        // The debit runs as an atomic UPDATE that bypasses the change tracker,
+        // so drop cached instances before re-reading the wallet.
+        _db.Context.ChangeTracker.Clear();
         var wallet = _db.Context.Wallets.Single(w => w.UserId == _user.Id);
         Assert.Equal(40m, wallet.Balance);
 
@@ -218,5 +241,24 @@ public class WalletServiceTests : IAsyncLifetime
 
         await _notifications.Received(1).CreateAsync(Arg.Is<CreateNotificationDto>(n =>
             n.UserId == _user.Id && n.Type == NotificationType.Payment));
+    }
+
+    [Fact]
+    public async Task WithdrawAsync_RollsBackDebitWhenStripeTransferFails()
+    {
+        _user.StripeAccountId = "acct_1";
+        await _db.UserManager.UpdateAsync(_user);
+        await _db.SeedWalletAsync(_user.Id, balance: 100m);
+
+        _stripe.TransferToConnectAccountAsync(default!, default, default!, default!)
+            .ReturnsForAnyArgs<Task>(_ => throw new InvalidOperationException("stripe down"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.WithdrawAsync(_user.Id, new WithdrawalRequest(60m)));
+
+        _db.Context.ChangeTracker.Clear();
+        var wallet = _db.Context.Wallets.Single(w => w.UserId == _user.Id);
+        Assert.Equal(100m, wallet.Balance);
+        Assert.Empty(_db.Context.WalletTransactions.Where(t => t.WalletId == wallet.Id).ToList());
     }
 }

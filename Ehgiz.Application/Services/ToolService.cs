@@ -2,6 +2,7 @@ using Ehgiz.Application.Common;
 using Ehgiz.Application.DTOs.Tools;
 using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Entities;
+using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
 using Mapster;
 using Microsoft.AspNetCore.Hosting;
@@ -16,26 +17,26 @@ public class ToolService : IToolService
 {
     private readonly IUnitOfWork _uow;
     private readonly ICloudinaryService _cloudinaryService;
-    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ISavedSearchService _savedSearchService;
     private readonly ILogger<ToolService> _logger;
 
     public ToolService(
         IUnitOfWork uow,
         ICloudinaryService cloudinaryService,
-        IHttpContextAccessor httpContextAccessor,
         ISavedSearchService savedSearchService,
         ILogger<ToolService> logger)
     {
         _uow = uow;
         _cloudinaryService = cloudinaryService;
-        _httpContextAccessor = httpContextAccessor;
         _savedSearchService = savedSearchService;
         _logger = logger;
     }
 
     public async Task<PagedResult<ToolDto>> GetAllAsync(ToolFilterDto filter)
     {
+        filter.Page = Math.Max(filter.Page, 1);
+        filter.PageSize = Math.Clamp(filter.PageSize, 1, 100);
+
         var query = _uow.Tools.Query();
 
         if (filter.CategoryId.HasValue)
@@ -133,6 +134,17 @@ public class ToolService : IToolService
             throw new ValidationException("Latitude and longitude must be provided together.");
     }
 
+    // Defense in depth alongside the DTO [Range] attributes: a negative price or
+    // insurance would make booking totals negative and credit the renter's wallet.
+    private static void ValidatePricing(decimal pricePerDay, decimal insurancePrice)
+    {
+        if (pricePerDay <= 0)
+            throw new ValidationException("Price per day must be greater than zero.");
+
+        if (insurancePrice < 0)
+            throw new ValidationException("Insurance price cannot be negative.");
+    }
+
     public async Task<ToolDto> GetByIdAsync(int id)
     {
         return await _uow.Tools.Query()
@@ -149,6 +161,7 @@ public class ToolService : IToolService
             throw new KeyNotFoundException($"Category {dto.CategoryId} not found");
 
         ValidateCoordinates(dto.Latitude, dto.Longitude);
+        ValidatePricing(dto.PricePerDay, dto.InsurancePrice);
 
         var tool = dto.Adapt<Tool>();
         tool.OwnerId = ownerId;
@@ -177,6 +190,7 @@ public class ToolService : IToolService
             throw new UnauthorizedAccessException("Not your tool");
 
         ValidateCoordinates(dto.Latitude, dto.Longitude);
+        ValidatePricing(dto.PricePerDay, dto.InsurancePrice);
 
         dto.Adapt(tool);
 
@@ -192,8 +206,38 @@ public class ToolService : IToolService
         if (tool.OwnerId != ownerId)
             throw new UnauthorizedAccessException("Not your tool");
 
+        var hasActiveBookings = await _uow.Bookings.CountAsync(b =>
+            b.ToolId == id &&
+            (b.Status == BookingStatus.Pending ||
+             b.Status == BookingStatus.Accepted ||
+             b.Status == BookingStatus.DeliveryHandover ||
+             b.Status == BookingStatus.Active ||
+             b.Status == BookingStatus.ReturnHandover ||
+             b.Status == BookingStatus.Disputed)) > 0;
+
+        if (hasActiveBookings)
+            throw new InvalidOperationException(
+                "Cannot delete a tool that has active or pending bookings.");
+
+        var imagePublicIds = await _uow.ToolImages.Query()
+            .Where(i => i.ToolId == id && i.PublicId != null)
+            .Select(i => i.PublicId!)
+            .ToListAsync();
+
         _uow.Tools.Remove(tool);
         await _uow.SaveChangesAsync();
+
+        foreach (var publicId in imagePublicIds)
+        {
+            try
+            {
+                await _cloudinaryService.DeleteImageAsync(publicId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete Cloudinary image {PublicId} for removed tool {ToolId}", publicId, id);
+            }
+        }
     }
 
     public async Task<List<string>> UploadImagesAsync(int toolId, List<IFormFile> images, int ownerId)

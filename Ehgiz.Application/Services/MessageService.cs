@@ -70,6 +70,9 @@ public class MessageService : IMessageService
 
     public async Task<IReadOnlyList<MessageDto>> GetMessagesAsync(int conversationId, int userId, int page, int pageSize)
     {
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
         var conversation = await _uow.Conversations.GetByIdAsync(conversationId)
             ?? throw new KeyNotFoundException($"Conversation {conversationId} not found.");
 

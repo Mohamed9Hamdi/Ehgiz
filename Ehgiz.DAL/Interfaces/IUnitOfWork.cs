@@ -32,4 +32,12 @@ public interface IUnitOfWork : IAsyncDisposable
     // Runs operation inside a transaction via the configured execution strategy, so it composes with EnableRetryOnFailure.
     Task ExecuteInTransactionAsync(Func<Task> operation);
     Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation);
+
+    /// <summary>
+    /// Same as <see cref="ExecuteInTransactionAsync(Func{Task})"/> but with an
+    /// explicit isolation level. Use Serializable for check-then-insert flows
+    /// (e.g. booking-overlap checks) so concurrent transactions cannot both
+    /// pass the check.
+    /// </summary>
+    Task ExecuteInTransactionAsync(Func<Task> operation, System.Data.IsolationLevel isolationLevel);
 }

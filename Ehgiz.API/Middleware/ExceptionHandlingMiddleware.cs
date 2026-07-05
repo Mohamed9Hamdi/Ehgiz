@@ -43,6 +43,7 @@ public class ExceptionHandlingMiddleware
                 break;
             case InvalidOperationException:
             case ValidationException:
+            case ArgumentException:
                 statusCode = StatusCodes.Status400BadRequest;
                 message = ex.Message;
                 break;

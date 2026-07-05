@@ -32,4 +32,26 @@ public class WalletRepository : Repository<Wallet>, IWalletRepository
         return wallet;
     }
 
+    public async Task<bool> TryDebitBalanceAsync(int walletId, decimal amount)
+    {
+        var affected = await _context.Wallets
+            .Where(w => w.Id == walletId && w.Balance >= amount)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(w => w.Balance, w => w.Balance - amount)
+                .SetProperty(w => w.UpdatedAt, DateTime.UtcNow));
+
+        return affected > 0;
+    }
+
+    public async Task<bool> TryHoldBalanceAsync(int walletId, decimal amount)
+    {
+        var affected = await _context.Wallets
+            .Where(w => w.Id == walletId && w.Balance >= amount)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(w => w.Balance, w => w.Balance - amount)
+                .SetProperty(w => w.HeldBalance, w => w.HeldBalance + amount)
+                .SetProperty(w => w.UpdatedAt, DateTime.UtcNow));
+
+        return affected > 0;
+    }
 }

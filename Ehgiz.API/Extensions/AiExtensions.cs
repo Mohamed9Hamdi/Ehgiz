@@ -20,8 +20,13 @@ public static class AiExtensions
                     "AI API key is not configured. Set AI__ApiKey in .env. AI assistant endpoints will return 503.");
             }
 
+            // ApiKeyCredential rejects empty keys; use a placeholder so an
+            // unconfigured key surfaces as the controller's 503 instead of a
+            // DI crash while constructing the client.
+            var apiKey = string.IsNullOrWhiteSpace(settings.ApiKey) ? "unconfigured" : settings.ApiKey;
+
             var openAiClient = new OpenAIClient(
-                new System.ClientModel.ApiKeyCredential(settings.ApiKey),
+                new System.ClientModel.ApiKeyCredential(apiKey),
                 new OpenAIClientOptions
                 {
                     Endpoint = new Uri(settings.Endpoint)

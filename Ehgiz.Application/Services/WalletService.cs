@@ -39,10 +39,24 @@ public class WalletService : IWalletService
             TotalBalance: wallet.Balance + wallet.HeldBalance);
     }
 
+    // Wallet balances are denominated in USD; accepting any other currency here
+    // would let a checkout paid in a cheap currency be credited 1:1 as dollars.
+    private const string WalletCurrency = "usd";
+    private const decimal MaxTopUpAmount = 100_000m;
+
     public async Task<TopUpResponse> InitiateTopUpAsync(int userId, TopUpRequest request, string returnUrl)
     {
         if (request.Amount <= 0)
             throw new InvalidOperationException("Top-up amount must be greater than zero.");
+
+        if (request.Amount > MaxTopUpAmount)
+            throw new InvalidOperationException($"Top-up amount cannot exceed {MaxTopUpAmount:C}.");
+
+        if (decimal.Round(request.Amount, 2) != request.Amount)
+            throw new InvalidOperationException("Top-up amount cannot have more than two decimal places.");
+
+        if (!string.Equals(request.Currency, WalletCurrency, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Only USD top-ups are supported.");
 
         var user = await _userManager.FindByIdAsync(userId.ToString())
             ?? throw new KeyNotFoundException("User not found.");
@@ -57,7 +71,7 @@ public class WalletService : IWalletService
         var description = $"Wallet top-up for user {userId}";
         var clientSecret = await _stripe.CreateCheckoutSessionAsync(
             request.Amount,
-            request.Currency,
+            WalletCurrency,
             user.StripeCustomerId,
             description,
             userId,
@@ -66,12 +80,22 @@ public class WalletService : IWalletService
         return new TopUpResponse(
             ClientSecret: clientSecret,
             Amount: request.Amount,
-            Currency: request.Currency);
+            Currency: WalletCurrency);
     }
 
     public async Task CreditWalletFromStripeAsync(string sessionId, int userId, decimal amount)
     {
         var wallet = await _uow.Wallets.GetOrCreateByUserIdAsync(userId);
+
+        // Stripe retries webhooks; a redelivered checkout.session.completed
+        // event must not credit the wallet a second time.
+        var alreadyCredited = await _uow.WalletTransactions.Query()
+            .AnyAsync(t => t.WalletId == wallet.Id
+                && t.Type == WalletTransactionType.TopUp
+                && t.Reference == sessionId);
+
+        if (alreadyCredited)
+            return;
 
         wallet.Balance += amount;
         wallet.UpdatedAt = DateTime.UtcNow;
@@ -172,6 +196,9 @@ public class WalletService : IWalletService
         if (request.Amount <= 0)
             throw new InvalidOperationException("Withdrawal amount must be greater than zero.");
 
+        if (decimal.Round(request.Amount, 2) != request.Amount)
+            throw new InvalidOperationException("Withdrawal amount cannot have more than two decimal places.");
+
         var user = await _userManager.FindByIdAsync(userId.ToString())
             ?? throw new KeyNotFoundException("User not found.");
 
@@ -185,27 +212,35 @@ public class WalletService : IWalletService
             throw new InvalidOperationException(
                 $"Insufficient balance. Available: {wallet.Balance:C}, Requested: {request.Amount:C}");
 
-        // Transfer via Stripe
-        await _stripe.TransferToConnectAccountAsync(
-            user.StripeAccountId,
-            request.Amount,
-            "usd",
-            $"Withdrawal for user {userId}");
-
-        wallet.Balance -= request.Amount;
-        wallet.UpdatedAt = DateTime.UtcNow;
-
-        await _uow.WalletTransactions.AddAsync(new WalletTransaction
+        // Debit first with an atomic balance-guarded UPDATE so two concurrent
+        // withdrawals cannot both pass the check and overdraw; the Stripe
+        // transfer runs inside the transaction so a failed transfer rolls the
+        // debit back.
+        await _uow.ExecuteInTransactionAsync(async () =>
         {
-            WalletId = wallet.Id,
-            Amount = -request.Amount,
-            Type = WalletTransactionType.Withdrawal,
-            Reference = user.StripeAccountId,
-            Description = $"Withdrawal of {request.Amount:C} to bank account",
-            CreatedAt = DateTime.UtcNow
-        });
+            var debited = await _uow.Wallets.TryDebitBalanceAsync(wallet.Id, request.Amount);
+            if (!debited)
+                throw new InvalidOperationException(
+                    $"Insufficient balance. Requested: {request.Amount:C}");
 
-        await _uow.SaveChangesAsync();
+            await _uow.WalletTransactions.AddAsync(new WalletTransaction
+            {
+                WalletId = wallet.Id,
+                Amount = -request.Amount,
+                Type = WalletTransactionType.Withdrawal,
+                Reference = user.StripeAccountId,
+                Description = $"Withdrawal of {request.Amount:C} to bank account",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _uow.SaveChangesAsync();
+
+            await _stripe.TransferToConnectAccountAsync(
+                user.StripeAccountId,
+                request.Amount,
+                WalletCurrency,
+                $"Withdrawal for user {userId}");
+        });
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {

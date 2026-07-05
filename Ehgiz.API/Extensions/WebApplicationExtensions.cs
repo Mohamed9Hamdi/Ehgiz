@@ -1,6 +1,7 @@
 using Ehgiz.API.Hubs;
 using Ehgiz.API.Middleware;
 using Ehgiz.Application.Seed;
+using Serilog;
 
 namespace Ehgiz.API.Extensions;
 
@@ -24,11 +25,25 @@ public static class WebApplicationExtensions
 
     public static WebApplication UseApplicationMiddleware(this WebApplication app)
     {
-        app.UseMiddleware<RequestLoggingMiddleware>();
+        // One structured log line per request (method, path, status, timing).
+        app.UseSerilogRequestLogging();
         app.UseMiddleware<ExceptionHandlingMiddleware>();
 
         if (!app.Environment.IsDevelopment())
+        {
+            app.UseHsts();
             app.UseHttpsRedirection();
+        }
+
+        // Baseline security headers for an API: no MIME sniffing, no framing,
+        // no referrer leakage to third parties.
+        app.Use(async (context, next) =>
+        {
+            context.Response.Headers.XContentTypeOptions = "nosniff";
+            context.Response.Headers.XFrameOptions = "DENY";
+            context.Response.Headers["Referrer-Policy"] = "no-referrer";
+            await next();
+        });
 
         app.UseCors("Angular");
         app.UseRateLimiter();

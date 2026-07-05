@@ -23,7 +23,7 @@ public class StripeService : IStripeService
                     PriceData = new SessionLineItemPriceDataOptions
                     {
                         Currency = currency,
-                        UnitAmount = (long)(amount * 100),
+                        UnitAmount = (long)decimal.Round(amount * 100, 0, MidpointRounding.AwayFromZero),
                         ProductData = new SessionLineItemPriceDataProductDataOptions
                         {
                             Name = description
@@ -106,7 +106,7 @@ public class StripeService : IStripeService
     {
         var options = new TransferCreateOptions
         {
-            Amount = (long)(amount * 100),
+            Amount = (long)decimal.Round(amount * 100, 0, MidpointRounding.AwayFromZero),
             Currency = currency,
             Destination = stripeAccountId,
             Description = description

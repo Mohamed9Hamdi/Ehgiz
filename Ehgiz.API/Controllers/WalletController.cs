@@ -2,8 +2,10 @@ using System.Security.Claims;
 using Ehgiz.Application.Common;
 using Ehgiz.Application.DTOs.Wallet;
 using Ehgiz.Application.Interfaces;
+using Ehgiz.Application.Settings;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Ehgiz.API.Controllers;
 
@@ -13,10 +15,12 @@ namespace Ehgiz.API.Controllers;
 public class WalletController : ControllerBase
 {
     private readonly IWalletService _walletService;
+    private readonly FrontendSettings _frontendSettings;
 
-    public WalletController(IWalletService walletService)
+    public WalletController(IWalletService walletService, IOptions<FrontendSettings> frontendSettings)
     {
         _walletService = walletService;
+        _frontendSettings = frontendSettings.Value;
     }
 
     private int CurrentUserId =>
@@ -51,7 +55,7 @@ public class WalletController : ControllerBase
     [HttpPost("topup")]
     public async Task<IActionResult> InitiateTopUp([FromBody] TopUpRequest dto)
     {
-        var returnUrl = $"http://localhost:4200//wallet/topup/return";
+        var returnUrl = $"{_frontendSettings.BaseUrl.TrimEnd('/')}/wallet/topup/return";
 
         var result = await _walletService.InitiateTopUpAsync(CurrentUserId, dto, returnUrl);
         return Ok(ApiResponse<TopUpResponse>.Success(result,
@@ -72,8 +76,10 @@ public class WalletController : ControllerBase
             "Redirect the user to the OnboardingUrl to complete Stripe Connect setup."));
     }
 
-    // GET api/wallet/connect/return  — Stripe redirects here after onboarding
+    // GET api/wallet/connect/return  — Stripe redirects the browser here after
+    // onboarding, without an Authorization header, so it must be anonymous.
     [HttpGet("connect/return")]
+    [AllowAnonymous]
     public IActionResult ConnectReturn()
     {
         return Ok(ApiResponse<object>.Success(null!,

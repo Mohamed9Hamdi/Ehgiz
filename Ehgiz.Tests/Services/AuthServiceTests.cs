@@ -1,4 +1,4 @@
-using Ehgiz.Application.DTOs.Auth;
+﻿using Ehgiz.Application.DTOs.Auth;
 using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Services;
 using Ehgiz.Application.Settings;
@@ -184,6 +184,37 @@ public class AuthServiceTests : IAsyncLifetime
 
         Assert.True(result.Succeeded);
         Assert.Contains("already verified", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task VerifyEmail_BurnsCodeAfterFiveWrongAttempts()
+    {
+        await _sut.RegisterAsync(Register());
+
+        for (var i = 0; i < 5; i++)
+            await _sut.VerifyEmailAsync(new VerifyEmailRequestDTO("new@test.local", "000000"));
+
+        // The real code is now burned and no longer accepted.
+        var result = await _sut.VerifyEmailAsync(new VerifyEmailRequestDTO("new@test.local", _lastVerificationCode!));
+
+        Assert.False(result.Succeeded);
+        var user = await _db.UserManager.FindByEmailAsync("new@test.local");
+        Assert.False(user!.EmailConfirmed);
+    }
+
+    [Fact]
+    public async Task ResendVerification_CapsResendsPerWindow()
+    {
+        await _sut.RegisterAsync(Register());
+
+        // Registration sent 1 code; two resends reach the per-window cap of 3.
+        await _sut.ResendVerificationAsync(new ResendVerificationRequestDTO("new@test.local"));
+        await _sut.ResendVerificationAsync(new ResendVerificationRequestDTO("new@test.local"));
+        var result = await _sut.ResendVerificationAsync(new ResendVerificationRequestDTO("new@test.local"));
+
+        // Still reports success (no information leak) but sends nothing further.
+        Assert.True(result.Succeeded);
+        await _email.Received(3).SendVerificationCodeAsync("new@test.local", Arg.Any<string>());
     }
 
     // ── ForgotPassword / ResetPassword ──────────────────────────────────────

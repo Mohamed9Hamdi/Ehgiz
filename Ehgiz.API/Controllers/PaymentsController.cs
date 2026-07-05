@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Ehgiz.Application.Common;
 using Ehgiz.Application.DTOs.Payments;
 using Ehgiz.Application.Interfaces;
@@ -17,6 +18,9 @@ public class PaymentsController : ControllerBase
         _paymentService = paymentService;
     }
 
+    private int CurrentUserId =>
+        int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     // POST api/payments/webhook  — called by Stripe, no JWT auth
     [HttpPost("webhook")]
     [AllowAnonymous]
@@ -32,14 +36,14 @@ public class PaymentsController : ControllerBase
     }
 
     // GET api/payments/booking/{bookingId}
-    // [HttpGet("booking/{bookingId:int}")]
-    // [Authorize]
-    // public async Task<IActionResult> GetPaymentByBooking(int bookingId)
-    // {
-    //     var result = await _paymentService.GetPaymentByBookingAsync(bookingId);
-    //     if (result is null)
-    //         return NotFound(ApiResponse<PaymentDto>.Fail("No payment found for this booking."));
+    [HttpGet("booking/{bookingId:int}")]
+    [Authorize]
+    public async Task<IActionResult> GetPaymentByBooking(int bookingId)
+    {
+        var result = await _paymentService.GetPaymentByBookingAsync(bookingId, CurrentUserId);
+        if (result is null)
+            return NotFound(ApiResponse<PaymentDto>.Fail("No payment found for this booking."));
 
-    //     return Ok(ApiResponse<PaymentDto>.Success(result));
-    // }
+        return Ok(ApiResponse<PaymentDto>.Success(result));
+    }
 }

@@ -9,6 +9,16 @@ namespace Ehgiz.Application.Services;
 
 public class CloudinaryService : ICloudinaryService
 {
+    private const long MaxImageBytes = 5 * 1024 * 1024;
+
+    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif"
+    };
+
     private readonly Cloudinary _cloudinary;
 
     public CloudinaryService(IOptions<CloudinarySettings> config)
@@ -27,6 +37,12 @@ public class CloudinaryService : ICloudinaryService
         if (file == null || file.Length == 0)
             throw new ArgumentException("File is empty", nameof(file));
 
+        if (file.Length > MaxImageBytes)
+            throw new InvalidOperationException("Images cannot exceed 5 MB.");
+
+        if (string.IsNullOrWhiteSpace(file.ContentType) || !AllowedContentTypes.Contains(file.ContentType))
+            throw new InvalidOperationException("Only JPEG, PNG, WEBP, and GIF images are supported.");
+
         using var stream = file.OpenReadStream();
         var uploadParams = new ImageUploadParams
         {
@@ -36,7 +52,7 @@ public class CloudinaryService : ICloudinaryService
         var result = await _cloudinary.UploadAsync(uploadParams);
 
         if (result.Error != null)
-            throw new Exception($"Cloudinary upload failed: {result.Error.Message}");
+            throw new InvalidOperationException($"Image upload failed: {result.Error.Message}");
 
         return new Interfaces.ImageUploadResult
         {

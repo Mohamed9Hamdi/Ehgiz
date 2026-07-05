@@ -9,7 +9,7 @@ namespace Ehgiz.API.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin")]
-[Authorize(Roles = "admin")]
+[Authorize(Roles = AppRoles.Admin)]
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;

@@ -17,8 +17,11 @@ namespace Ehgiz.Application.Services;
 public class AuthService : IAuthService
 {
     private const int MaxResetCodeAttempts = 5;
+    private const int MaxVerificationCodeAttempts = 5;
     private const int MaxResetRequestsPerWindow = 3;
+    private const int MaxVerificationRequestsPerWindow = 3;
     private static readonly TimeSpan ResetRequestWindow = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan VerificationRequestWindow = TimeSpan.FromMinutes(15);
     private const string GenericResetCodeMessage = "If an account exists, a password reset code was sent.";
 
     private readonly UserManager<ApplicationUser> _userManager;
@@ -175,10 +178,24 @@ public class AuthService : IAuthService
         }
 
         var hash = _tokenService.HashToken(dto.Code.Trim());
-        var stored = await _uow.EmailVerificationCodes.GetByUserAndHashAsync(user.Id, hash);
+        var activeCodes = await _uow.EmailVerificationCodes.GetActiveByUserIdAsync(user.Id);
+        var stored = activeCodes.FirstOrDefault(c => c.CodeHash == hash);
 
-        if (stored is null || !stored.IsActive)
+        if (stored is null)
         {
+            // Wrong code: count the attempt against the user's active code(s)
+            // and burn them once the attempt budget is spent, so a 6-digit
+            // code cannot be brute-forced within its lifetime.
+            foreach (var code in activeCodes)
+            {
+                code.AttemptCount++;
+                if (code.AttemptCount >= MaxVerificationCodeAttempts)
+                    code.UsedAt = DateTime.UtcNow;
+            }
+
+            if (activeCodes.Count > 0)
+                await _uow.SaveChangesAsync();
+
             return new VerifyEmailResultDTO(
                 false,
                 "Invalid or expired verification code.",
@@ -226,6 +243,20 @@ public class AuthService : IAuthService
             return new ResendVerificationResultDTO(
                 false,
                 "Email is already verified.");
+        }
+
+        // Cap resends per address so the endpoint cannot be used to flood a
+        // victim's inbox or burn the email-sending quota.
+        var windowStart = DateTime.UtcNow.Subtract(VerificationRequestWindow);
+        var recentRequests = await _uow.EmailVerificationCodes.CountAsync(c =>
+            c.UserId == user.Id && c.CreatedAt >= windowStart);
+
+        if (recentRequests >= MaxVerificationRequestsPerWindow)
+        {
+            _logger.LogWarning("Verification resend rate limit reached for user {UserId}", user.Id);
+            return new ResendVerificationResultDTO(
+                true,
+                "Verification code sent.");
         }
 
         await InvalidateActiveCodesAsync(user.Id);

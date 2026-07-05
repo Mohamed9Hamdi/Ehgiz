@@ -1,4 +1,4 @@
-using Ehgiz.Application.DTOs.Bookings;
+﻿using Ehgiz.Application.DTOs.Bookings;
 using Ehgiz.Application.DTOs.Handovers;
 using Ehgiz.Application.DTOs.Notifications;
 using Ehgiz.Application.Interfaces;
@@ -113,6 +113,9 @@ public class BookingServiceTests : IAsyncLifetime
         Assert.Equal(3m, result.PlatformFee);           // default 10% of 30
         Assert.Equal(50m, result.TotalCharged);         // rental + insurance
 
+        // The escrow hold runs as an atomic UPDATE that bypasses the change
+        // tracker, so drop cached instances before re-reading the wallet.
+        _db.Context.ChangeTracker.Clear();
         var wallet = _db.Context.Wallets.Single(w => w.UserId == _renter.Id);
         Assert.Equal(30m, wallet.Balance);              // 80 - 50
         Assert.Equal(50m, wallet.HeldBalance);

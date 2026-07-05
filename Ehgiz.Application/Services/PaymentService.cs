@@ -61,8 +61,14 @@ public class PaymentService : IPaymentService
         }
     }
 
-    public async Task<PaymentDto?> GetPaymentByBookingAsync(int bookingId)
+    public async Task<PaymentDto?> GetPaymentByBookingAsync(int bookingId, int requestingUserId)
     {
+        var booking = await _uow.Bookings.GetBookingWithDetailsAsync(bookingId)
+            ?? throw new KeyNotFoundException($"Booking {bookingId} not found.");
+
+        if (booking.RenterId != requestingUserId && booking.Tool.OwnerId != requestingUserId)
+            throw new UnauthorizedAccessException("You are not authorized to view this booking's payment.");
+
         var payment = await _uow.Payments.GetByBookingIdAsync(bookingId);
         if (payment is null) return null;
 

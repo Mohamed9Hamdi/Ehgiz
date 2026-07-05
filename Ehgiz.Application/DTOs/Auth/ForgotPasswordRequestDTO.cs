@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Ehgiz.Application.DTOs.Auth;
 
-public record ForgotPasswordRequestDTO(string Email);
+public record ForgotPasswordRequestDTO(
+    [property: Required, EmailAddress, MaxLength(256)] string Email);

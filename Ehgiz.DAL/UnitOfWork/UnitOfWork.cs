@@ -114,6 +114,17 @@ public class UnitOfWork : IUnitOfWork
         });
     }
 
+    public async Task ExecuteInTransactionAsync(Func<Task> operation, System.Data.IsolationLevel isolationLevel)
+    {
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync(isolationLevel);
+            await operation();
+            await transaction.CommitAsync();
+        });
+    }
+
     public async Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation)
     {
         var strategy = _context.Database.CreateExecutionStrategy();

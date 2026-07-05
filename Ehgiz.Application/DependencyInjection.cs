@@ -25,6 +25,7 @@ public static class DependencyInjection
         // JWT
         services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
         services.Configure<AiSettings>(configuration.GetSection("AI"));
+        services.Configure<FrontendSettings>(configuration.GetSection("Frontend"));
 
 
         // Stripe
@@ -41,9 +42,15 @@ public static class DependencyInjection
         {
             var aiSettings = sp.GetRequiredService<IOptions<AiSettings>>().Value;
             var githubModelsSettings = sp.GetRequiredService<IOptions<GitHubModelsSettings>>().Value;
+
+            // ApiKeyCredential rejects empty keys; use a placeholder so an
+            // unconfigured key fails at the AI call site (handled per feature)
+            // instead of crashing DI resolution for every dependent service.
+            var apiKey = string.IsNullOrWhiteSpace(aiSettings.ApiKey) ? "unconfigured" : aiSettings.ApiKey;
+
             return new ChatClient(
                 model: githubModelsSettings.Model,
-                credential: new ApiKeyCredential(aiSettings.ApiKey ?? string.Empty),
+                credential: new ApiKeyCredential(apiKey),
                 options: new OpenAIClientOptions
                 {
                     Endpoint = new Uri(aiSettings.Endpoint.TrimEnd('/'))

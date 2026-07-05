@@ -3,11 +3,12 @@ using Ehgiz.Application.Common;
 using Ehgiz.Application.DTOs.Auth;
 using Ehgiz.Application.DTOs.Profile;
 using Ehgiz.Application.Interfaces;
-using Ehgiz.Application.Services;
+using Ehgiz.Application.Settings;
 using MapsterMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace Ehgiz.API.Controllers;
 
@@ -16,20 +17,27 @@ namespace Ehgiz.API.Controllers;
 public class AuthController : ControllerBase
 {
     private const string RefreshCookieName = "X-Refresh-Token";
-    private const string RefreshCookiePath = "/api/auth/refresh";
+
+    // Must cover both /api/auth/refresh and /api/auth/logout; a narrower path
+    // (e.g. "/api/auth/refresh") means the browser never sends the cookie to
+    // logout, so the refresh token could never be revoked.
+    private const string RefreshCookiePath = "/api/auth";
 
     private readonly IAuthService _authService;
     private readonly IProfileService _profileService;
     private readonly IMapper _mapper;
+    private readonly JwtSettings _jwtSettings;
 
     public AuthController(
         IAuthService authService,
         IProfileService profileService,
-        IMapper mapper)
+        IMapper mapper,
+        IOptions<JwtSettings> jwtSettings)
     {
         _authService = authService;
         _profileService = profileService;
         _mapper = mapper;
+        _jwtSettings = jwtSettings.Value;
     }
 
     [HttpPost("register")]
@@ -90,6 +98,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("verify-email")]
+    [EnableRateLimiting("auth-codes")]
     public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequestDTO dto)
     {
         var result = await _authService.VerifyEmailAsync(dto);
@@ -105,6 +114,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("resend-verification")]
+    [EnableRateLimiting("auth-codes")]
     public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequestDTO dto)
     {
         var result = await _authService.ResendVerificationAsync(dto);
@@ -118,7 +128,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("forgot-password")]
-    [EnableRateLimiting("password-reset")]
+    [EnableRateLimiting("auth-codes")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDTO dto)
     {
         var result = await _authService.ForgotPasswordAsync(dto);
@@ -134,7 +144,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("resend-reset-code")]
-    [EnableRateLimiting("password-reset")]
+    [EnableRateLimiting("auth-codes")]
     public async Task<IActionResult> ResendResetCode([FromBody] ResendResetCodeRequestDTO dto)
     {
         var result = await _authService.ResendResetCodeAsync(dto);
@@ -150,6 +160,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("reset-password")]
+    [EnableRateLimiting("auth-codes")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDTO dto)
     {
         var result = await _authService.ResetPasswordAsync(dto);
@@ -273,7 +284,8 @@ public class AuthController : ControllerBase
             HttpOnly = true,
             Secure = true,
             SameSite = SameSiteMode.Strict,
-            Path = RefreshCookiePath
+            Path = RefreshCookiePath,
+            Expires = DateTimeOffset.UtcNow.AddDays(_jwtSettings.RefreshTokenDays)
         });
     }
 

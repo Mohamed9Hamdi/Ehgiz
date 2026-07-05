@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using Ehgiz.Application.DTOs.Tools;
 using Ehgiz.Application.Interfaces;
 using Ehgiz.Application.Services;
@@ -27,7 +27,6 @@ public class ToolServiceTests : IAsyncLifetime
         _sut = new ToolService(
             _db.Uow,
             _cloudinary,
-            Substitute.For<IHttpContextAccessor>(),
             _savedSearches,
             NullLogger<ToolService>.Instance);
 
@@ -166,7 +165,8 @@ public class ToolServiceTests : IAsyncLifetime
         var result = await _sut.CreateAsync(new CreateToolDto
         {
             CategoryId = _category.Id,
-            Name = "Resilient Tool"
+            Name = "Resilient Tool",
+            PricePerDay = 10m
         }, _owner.Id);
 
         Assert.True(result.Id > 0);
@@ -217,6 +217,41 @@ public class ToolServiceTests : IAsyncLifetime
         await _sut.DeleteAsync(tool.Id, _owner.Id);
 
         Assert.Empty(_db.Context.Tools.Where(t => t.Id == tool.Id).ToList());
+    }
+
+    [Fact]
+    public async Task DeleteAsync_BlocksWhenToolHasActiveBookings()
+    {
+        var tool = await _db.SeedToolAsync(_owner.Id, _category.Id);
+        await _db.SeedBookingAsync(tool.Id, _stranger.Id, BookingStatus.Active);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.DeleteAsync(tool.Id, _owner.Id));
+        Assert.Single(_db.Context.Tools.Where(t => t.Id == tool.Id).ToList());
+    }
+
+    [Fact]
+    public async Task CreateAsync_RejectsNonPositivePrice()
+    {
+        await Assert.ThrowsAsync<ValidationException>(() => _sut.CreateAsync(new CreateToolDto
+        {
+            CategoryId = _category.Id,
+            Name = "Free Money Glitch",
+            PricePerDay = -10m
+        }, _owner.Id));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_RejectsNegativeInsurance()
+    {
+        var tool = await _db.SeedToolAsync(_owner.Id, _category.Id);
+
+        await Assert.ThrowsAsync<ValidationException>(() => _sut.UpdateAsync(tool.Id, new UpdateToolDto
+        {
+            CategoryId = _category.Id,
+            Name = "Drill",
+            PricePerDay = 10m,
+            InsurancePrice = -5m
+        }, _owner.Id));
     }
 
     // ── Images ──────────────────────────────────────────────────────────────

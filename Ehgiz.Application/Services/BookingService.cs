@@ -74,12 +74,20 @@ public class BookingService : IBookingService
             CreatedAt = DateTime.UtcNow
         };
 
+        // The overlap check above ran outside any transaction, so two renters
+        // could both pass it concurrently. Serializable isolation makes the
+        // re-check take range locks that force one of the two inserts to wait
+        // and then fail the re-check; the wallet hold is a single guarded
+        // UPDATE so a concurrent spend cannot overdraw either.
         await _uow.ExecuteInTransactionAsync(async () =>
         {
-            // Deduct from wallet → hold in escrow
-            wallet.Balance -= totalCharged;
-            wallet.HeldBalance += totalCharged;
-            wallet.UpdatedAt = DateTime.UtcNow;
+            if (await _uow.Bookings.HasOverlappingBookingAsync(dto.ToolId, dto.StartDate, dto.EndDate))
+                throw new InvalidOperationException("The tool is already booked for the selected dates.");
+
+            var held = await _uow.Wallets.TryHoldBalanceAsync(wallet.Id, totalCharged);
+            if (!held)
+                throw new InvalidOperationException(
+                    $"Insufficient wallet balance. Required: {totalCharged:C}");
 
             await _uow.WalletTransactions.AddAsync(new WalletTransaction
             {
@@ -93,7 +101,7 @@ public class BookingService : IBookingService
 
             await _uow.Bookings.AddAsync(booking);
             await _uow.SaveChangesAsync();
-        });
+        }, System.Data.IsolationLevel.Serializable);
 
         await _notificationService.CreateAsync(new CreateNotificationDto
         {
