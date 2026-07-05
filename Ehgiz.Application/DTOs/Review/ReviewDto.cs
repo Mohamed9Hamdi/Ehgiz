@@ -11,4 +11,5 @@ public class ReviewDto
     public int ToolId { get; set; }
     public string ToolName { get; set; } = null!;
     public string RenterName { get; set; } = null!;
+    public string? RenterProfileImageUrl { get; set; }
 }

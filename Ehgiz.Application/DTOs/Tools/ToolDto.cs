@@ -14,6 +14,7 @@ public class ToolDto
 
     public int OwnerId { get; set; }
     public string OwnerName { get; set; } = null!;
+    public string? OwnerProfileImageUrl { get; set; }
 
     public int CategoryId { get; set; }
     public string CategoryName { get; set; } = null!;

@@ -13,6 +13,7 @@ public class ToolProfile : IRegister
    
         config.NewConfig<Tool, ToolDto>()
             .Map(dest => dest.OwnerName, src => src.Owner.FullName)
+            .Map(dest => dest.OwnerProfileImageUrl, src => src.Owner.ProfileImageUrl)
             .Map(dest => dest.CategoryName, src => src.Category.Name)
             .Map(dest => dest.Condition, src => src.Condition.HasValue ? src.Condition.Value.ToString() : null)
             .Map(dest => dest.ImageUrls, src => src.Images.Select(i => i.ImageUrl).ToList());

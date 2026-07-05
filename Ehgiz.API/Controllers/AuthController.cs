@@ -32,7 +32,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterRequestDTO dto)
+    public async Task<IActionResult> Register([FromForm] RegisterRequestDTO dto)
     {
         var result = await _authService.RegisterAsync(dto);
 
@@ -178,6 +178,68 @@ public class AuthController : ControllerBase
         }
 
         return Ok(ApiResponse<UserProfileDTO>.Success(profile, "Profile retrieved successfully."));
+    }
+
+    [Authorize]
+    [HttpPut("me")]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDTO dto)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(ApiResponse<UserProfileDTO>.Fail("Unauthorized."));
+        }
+
+        var profile = await _profileService.UpdateProfileAsync(userId, dto);
+        if (profile is null)
+        {
+            return NotFound(ApiResponse<UserProfileDTO>.Fail("User not found."));
+        }
+
+        return Ok(ApiResponse<UserProfileDTO>.Success(profile, "Profile updated successfully."));
+    }
+
+    [Authorize]
+    [HttpPost("me/profile-image")]
+    public async Task<IActionResult> UpdateProfileImage(IFormFile image)
+    {
+        if (image is null || image.Length == 0)
+        {
+            return BadRequest(ApiResponse<UserProfileDTO>.Fail("Image file is required."));
+        }
+
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(ApiResponse<UserProfileDTO>.Fail("Unauthorized."));
+        }
+
+        var profile = await _profileService.UpdateProfileImageAsync(userId, image);
+        if (profile is null)
+        {
+            return NotFound(ApiResponse<UserProfileDTO>.Fail("User not found."));
+        }
+
+        return Ok(ApiResponse<UserProfileDTO>.Success(profile, "Profile image updated successfully."));
+    }
+
+    [Authorize]
+    [HttpDelete("me/profile-image")]
+    public async Task<IActionResult> RemoveProfileImage()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(ApiResponse<UserProfileDTO>.Fail("Unauthorized."));
+        }
+
+        var profile = await _profileService.RemoveProfileImageAsync(userId);
+        if (profile is null)
+        {
+            return NotFound(ApiResponse<UserProfileDTO>.Fail("User not found."));
+        }
+
+        return Ok(ApiResponse<UserProfileDTO>.Success(profile, "Profile image removed successfully."));
     }
 
     [Authorize]

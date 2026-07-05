@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+
 namespace Ehgiz.Application.DTOs.Auth;
 
 public record RegisterRequestDTO(
@@ -5,4 +7,6 @@ public record RegisterRequestDTO(
     string Email,
     string PhoneNumber,
     string City,
-    string Password);
+    string Password,
+    IFormFile? ProfileImage = null,
+    IFormFile? NationalIdImage = null);

@@ -542,6 +542,7 @@ public class AdminService : IAdminService
                 Email: user.Email ?? string.Empty,
                 PhoneNumber: user.PhoneNumber,
                 ProfileImageUrl: user.ProfileImageUrl,
+                NationalIdImageUrl: user.NationalIdImageUrl,
                 Address: user.Address,
                 City: user.City,
                 IsActive: user.IsActive,
@@ -572,6 +573,7 @@ public class AdminService : IAdminService
             Email: user.Email ?? string.Empty,
             PhoneNumber: user.PhoneNumber,
             ProfileImageUrl: user.ProfileImageUrl,
+            NationalIdImageUrl: user.NationalIdImageUrl,
             Address: user.Address,
             City: user.City,
             IsActive: user.IsActive,
@@ -591,6 +593,13 @@ public class AdminService : IAdminService
 
         user.IsActive = isActive;
         await _userManager.UpdateAsync(user);
+
+        if (!isActive)
+        {
+            // Kill existing sessions so the user cannot refresh into a new access token.
+            await _uow.RefreshTokens.RevokeAllActiveByUserIdAsync(userId);
+            await _uow.SaveChangesAsync();
+        }
     }
 
     public async Task SetUserRoleAsync(int userId, string role)

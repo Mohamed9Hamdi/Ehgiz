@@ -11,7 +11,8 @@ public class ReviewProfile : IRegister
         config.NewConfig<Review, ReviewDto>()
             .Map(dest => dest.ToolId, src => src.Booking.ToolId)
             .Map(dest => dest.ToolName, src => src.Booking.Tool.Name)
-            .Map(dest => dest.RenterName, src => src.Booking.Renter.FullName);
+            .Map(dest => dest.RenterName, src => src.Booking.Renter.FullName)
+            .Map(dest => dest.RenterProfileImageUrl, src => src.Booking.Renter.ProfileImageUrl);
 
         config.NewConfig<CreateReviewDto, Review>()
             .Map(dest => dest.CreatedAt, _ => DateTime.UtcNow)

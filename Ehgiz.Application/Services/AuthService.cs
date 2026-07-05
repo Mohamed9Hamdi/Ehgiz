@@ -22,6 +22,7 @@ public class AuthService : IAuthService
     private readonly ITokenService _tokenService;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
+    private readonly ICloudinaryService _cloudinaryService;
     private readonly ILogger<AuthService> _logger;
     private readonly JwtSettings _jwtSettings;
     private readonly SendGridSettings _sendGridSettings;
@@ -33,6 +34,7 @@ public class AuthService : IAuthService
         ITokenService tokenService,
         IEmailService emailService,
         INotificationService notificationService,
+        ICloudinaryService cloudinaryService,
         ILogger<AuthService> logger,
         IOptions<JwtSettings> jwtSettings,
         IOptions<SendGridSettings> sendGridSettings)
@@ -43,6 +45,7 @@ public class AuthService : IAuthService
         _tokenService = tokenService;
         _emailService = emailService;
         _notificationService = notificationService;
+        _cloudinaryService = cloudinaryService;
         _logger = logger;
         _jwtSettings = jwtSettings.Value;
         _sendGridSettings = sendGridSettings.Value;
@@ -74,6 +77,17 @@ public class AuthService : IAuthService
 
         await _userManager.AddToRoleAsync(user, AppRoles.User);
 
+        await UploadRegistrationImagesAsync(user, dto);
+
+        try
+        {
+            await _uow.Wallets.GetOrCreateByUserIdAsync(user.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create wallet for new user {UserId}", user.Id);
+        }
+
         await CreateAndSendVerificationCodeAsync(user);
 
         try
@@ -103,6 +117,9 @@ public class AuthService : IAuthService
         var user = await _userManager.FindByEmailAsync(dto.Email);
         if (user is null)
             return new AuthLoginResultDTO(null, "Invalid email or password.");
+
+        if (!user.IsActive)
+            return new AuthLoginResultDTO(null, "Your account has been deactivated. Please contact support.");
 
         var signInResult = await _signInManager.CheckPasswordSignInAsync(user, dto.Password, lockoutOnFailure: true);
         if (signInResult.Succeeded)
@@ -333,7 +350,7 @@ public class AuthService : IAuthService
 
         var stored = await _uow.RefreshTokens.GetByHashWithUserAsync(hash);
 
-        if (stored is null || !stored.IsActive)
+        if (stored is null || !stored.IsActive || !stored.User.IsActive)
             return null;
 
         stored.RevokedAt = DateTime.UtcNow;
@@ -351,6 +368,35 @@ public class AuthService : IAuthService
 
         stored.RevokedAt = DateTime.UtcNow;
         await _uow.SaveChangesAsync();
+    }
+
+    private async Task UploadRegistrationImagesAsync(ApplicationUser user, RegisterRequestDTO dto)
+    {
+        if (dto.ProfileImage is null && dto.NationalIdImage is null)
+            return;
+
+        try
+        {
+            if (dto.ProfileImage is not null)
+            {
+                var upload = await _cloudinaryService.UploadImageAsync(dto.ProfileImage);
+                user.ProfileImageUrl = upload.ImageUrl;
+                user.ProfileImagePublicId = upload.PublicId;
+            }
+
+            if (dto.NationalIdImage is not null)
+            {
+                var upload = await _cloudinaryService.UploadImageAsync(dto.NationalIdImage);
+                user.NationalIdImageUrl = upload.ImageUrl;
+                user.NationalIdImagePublicId = upload.PublicId;
+            }
+
+            await _userManager.UpdateAsync(user);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to upload registration images for user {UserId}", user.Id);
+        }
     }
 
     private async Task CreateAndSendVerificationCodeAsync(ApplicationUser user)
