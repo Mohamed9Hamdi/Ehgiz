@@ -3,4 +3,5 @@ using System.ComponentModel.DataAnnotations;
 namespace Ehgiz.Application.DTOs.Auth;
 
 public record ForgotPasswordRequestDTO(
-    [property: Required, EmailAddress, MaxLength(256)] string Email);
+    [Required, EmailAddress, MaxLength(256)] string Email
+);

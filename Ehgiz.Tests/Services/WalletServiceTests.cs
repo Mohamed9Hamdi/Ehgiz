@@ -130,7 +130,7 @@ public class WalletServiceTests : IAsyncLifetime
             new WalletTransaction { WalletId = wallet.Id, Amount = 10m, Type = WalletTransactionType.TopUp, CreatedAt = DateTime.UtcNow.AddMinutes(-10) },
             new WalletTransaction { WalletId = wallet.Id, Amount = -5m, Type = WalletTransactionType.BookingDebit, CreatedAt = DateTime.UtcNow },
             new WalletTransaction { WalletId = otherWallet.Id, Amount = 99m, Type = WalletTransactionType.TopUp, CreatedAt = DateTime.UtcNow });
-        await _db.Context.SaveChangesAsync();
+        await _db.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = (await _sut.GetTransactionHistoryAsync(_user.Id)).ToList();
 
@@ -164,7 +164,7 @@ public class WalletServiceTests : IAsyncLifetime
             Amount = 10m,
             CreatedAt = DateTime.UtcNow
         });
-        await _db.Context.SaveChangesAsync();
+        await _db.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _sut.GetEarningsAsync(_user.Id, 3);
 

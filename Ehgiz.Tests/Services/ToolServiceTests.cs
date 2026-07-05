@@ -72,7 +72,7 @@ public class ToolServiceTests : IAsyncLifetime
             var tool = await _db.SeedToolAsync(_owner.Id, _category.Id, name: $"Tool {i}");
             tool.CreatedAt = DateTime.UtcNow.AddMinutes(i);
         }
-        await _db.Context.SaveChangesAsync();
+        await _db.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var page2 = await _sut.GetAllAsync(new ToolFilterDto { Page = 2, PageSize = 2 });
 
@@ -297,7 +297,7 @@ public class ToolServiceTests : IAsyncLifetime
         _db.Context.ToolImages.AddRange(
             new ToolImage { ToolId = tool.Id, ImageUrl = "https://img/1", PublicId = "pub1", IsPrimary = true },
             new ToolImage { ToolId = tool.Id, ImageUrl = "https://img/2", PublicId = "pub2", IsPrimary = false });
-        await _db.Context.SaveChangesAsync();
+        await _db.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
         var primaryId = _db.Context.ToolImages.Single(i => i.IsPrimary).Id;
         // Mirror production: the service runs on a fresh request-scoped context.
         _db.Context.ChangeTracker.Clear();
@@ -316,7 +316,7 @@ public class ToolServiceTests : IAsyncLifetime
         _db.Context.ToolImages.AddRange(
             new ToolImage { ToolId = tool.Id, ImageUrl = "https://img/1", IsPrimary = true },
             new ToolImage { ToolId = tool.Id, ImageUrl = "https://img/2", IsPrimary = false });
-        await _db.Context.SaveChangesAsync();
+        await _db.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
         var secondId = _db.Context.ToolImages.Single(i => i.ImageUrl == "https://img/2").Id;
         // Mirror production: the service runs on a fresh request-scoped context.
         _db.Context.ChangeTracker.Clear();

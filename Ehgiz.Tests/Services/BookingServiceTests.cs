@@ -135,7 +135,7 @@ public class BookingServiceTests : IAsyncLifetime
     public async Task CreateBooking_UsesPlatformFeePercentFromSystemSettings()
     {
         _db.Context.SystemSettings.Add(new SystemSetting { Key = "PlatformFeePercent", Value = "20" });
-        await _db.Context.SaveChangesAsync();
+        await _db.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
         await _db.SeedWalletAsync(_renter.Id, balance: 100m);
 
         var result = await _sut.CreateBookingAsync(

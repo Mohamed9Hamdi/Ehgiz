@@ -107,7 +107,7 @@ public class MessageServiceTests : IAsyncLifetime
                 CreatedAt = DateTime.UtcNow.AddMinutes(i)
             });
         }
-        await _db.Context.SaveChangesAsync();
+        await _db.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var page1 = await _sut.GetMessagesAsync(conversation.Id, _bob.Id, page: 1, pageSize: 2);
 

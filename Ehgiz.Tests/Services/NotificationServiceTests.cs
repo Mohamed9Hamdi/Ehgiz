@@ -70,7 +70,7 @@ public class NotificationServiceTests : IAsyncLifetime
     {
         var older = await SeedNotificationAsync(_user.Id);
         older.CreatedAt = DateTime.UtcNow.AddHours(-1);
-        await _db.Context.SaveChangesAsync();
+        await _db.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var newer = await SeedNotificationAsync(_user.Id);
         await SeedNotificationAsync(_otherUser.Id);
