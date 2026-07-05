@@ -6,7 +6,7 @@ The Angular frontend lives in a separate repository and consumes this API.
 
 ---
 
-## ✨ Features
+## Features
 
 - **Authentication & Accounts**
   - JWT access tokens (60 min) + rotating refresh tokens delivered as an HTTP-only cookie scoped to `/api/auth`
@@ -36,7 +36,7 @@ The Angular frontend lives in a separate repository and consumes this API.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 The solution follows a clean, three-layer architecture with strict inward-pointing dependencies:
 
@@ -67,7 +67,7 @@ Ehgiz.slnx
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Concern | Technology |
 |---|---|
@@ -86,7 +86,7 @@ Ehgiz.slnx
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -119,7 +119,7 @@ AI__ApiKey=<github-models-or-openai-key>
 SeedUsers__DefaultPassword=<password-for-seeded-demo-users>
 ```
 
-> ⚠️ Never commit `.env` or real secrets. `appsettings.json` should keep only non-sensitive defaults.
+> Never commit `.env` or real secrets. `appsettings.json` should keep only non-sensitive defaults.
 
 Other notable settings in `appsettings.json`:
 
@@ -150,7 +150,7 @@ The database seeder creates roles, demo users, and categories on first run (empt
 
 ---
 
-## 📡 API Surface
+## API Surface
 
 | Area | Base route | Highlights |
 |---|---|---|
@@ -172,7 +172,7 @@ All endpoints return a consistent `ApiResponse<T>` envelope. Full request/respon
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ```bash
 dotnet test
@@ -182,7 +182,7 @@ The test suite (`Ehgiz.Tests`) covers the application services (auth, bookings, 
 
 ---
 
-## 🔐 Security Notes
+## Security Notes
 
 - Refresh tokens are HTTP-only cookies scoped to `/api/auth` and rotated on use
 - One-time email code endpoints are rate-limited per IP (6 requests / 15 min) **and** per email, with neutral error responses that never reveal whether an account exists
@@ -191,6 +191,6 @@ The test suite (`Ehgiz.Tests`) covers the application services (auth, bookings, 
 
 ---
 
-## 📄 License
+## License
 
 This project is proprietary. All rights reserved.
