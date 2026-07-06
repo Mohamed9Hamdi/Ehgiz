@@ -76,6 +76,7 @@ public static class DependencyInjection
         services.AddScoped<IBookingService, BookingService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IAdminService, AdminService>();
+        services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IToolService, ToolService>();
         services.AddScoped<ICloudinaryService, CloudinaryService>();
         services.AddScoped<IReviewService, ReviewService>();
