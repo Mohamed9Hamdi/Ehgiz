@@ -1,3 +1,4 @@
+using Ehgiz.Application.DTOs.Admin;
 using Ehgiz.Application.DTOs.Auth;
 using Ehgiz.Application.DTOs.Profile;
 using Ehgiz.DAL.Entities;
@@ -21,5 +22,13 @@ public class AuthProfile : IRegister
 
         config.NewConfig<ApplicationUser, UserProfileDTO>()
             .Map(dest => dest.Roles, _ => Array.Empty<string>());
+
+        // Role and the listing/booking counts are resolved separately and
+        // injected by the caller.
+        config.NewConfig<ApplicationUser, AdminUserDetailsDto>()
+            .Map(dest => dest.Email, src => src.Email ?? string.Empty)
+            .Ignore(dest => dest.Role)
+            .Ignore(dest => dest.TotalListings)
+            .Ignore(dest => dest.TotalBookings);
     }
 }

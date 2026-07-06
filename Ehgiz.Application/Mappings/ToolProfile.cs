@@ -33,6 +33,14 @@ public class ToolProfile : IRegister
                 .Select(i => i.ImageUrl).FirstOrDefault())
             .Map(dest => dest.Condition, src => src.Condition.HasValue ? src.Condition.Value.ToString() : null);
 
+        // TotalBookings is a separate aggregate injected by the caller.
+        config.NewConfig<Tool, AdminListingDetailsDto>()
+            .Map(dest => dest.CategoryName, src => src.Category.Name)
+            .Map(dest => dest.OwnerName, src => src.Owner.FullName)
+            .Map(dest => dest.ImageUrls, src => src.Images.Select(i => i.ImageUrl).ToList())
+            .Map(dest => dest.Condition, src => src.Condition.HasValue ? src.Condition.Value.ToString() : null)
+            .Ignore(dest => dest.TotalBookings);
+
         config.NewConfig<CreateToolDto, Tool>()
             .Map(dest => dest.IsAvailable, _ => true)              
             .Map(dest => dest.CreatedAt, _ => DateTime.UtcNow)

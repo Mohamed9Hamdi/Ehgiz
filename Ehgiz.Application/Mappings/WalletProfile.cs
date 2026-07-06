@@ -9,6 +9,9 @@ public class WalletProfile : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
+        config.NewConfig<Wallet, WalletDto>()
+            .Map(dest => dest.TotalBalance, src => src.Balance + src.HeldBalance);
+
         config.NewConfig<WalletTransaction, WalletTransactionDto>()
             .Map(dest => dest.Type, src => src.Type.ToString());
 

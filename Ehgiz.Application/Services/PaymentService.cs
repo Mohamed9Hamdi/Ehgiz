@@ -4,6 +4,7 @@ using Ehgiz.Application.Settings;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
+using Mapster;
 using Microsoft.Extensions.Options;
 using Stripe;
 
@@ -72,14 +73,6 @@ public class PaymentService : IPaymentService
         var payment = await _uow.Payments.GetByBookingIdAsync(bookingId);
         if (payment is null) return null;
 
-        return new PaymentDto(
-            Id: payment.Id,
-            BookingId: payment.BookingId,
-            Amount: payment.Amount,
-            PaymentMethod: payment.PaymentMethod?.ToString(),
-            PaymentStatus: payment.PaymentStatus?.ToString(),
-            EscrowStatus: payment.EscrowStatus?.ToString(),
-            PaidAt: payment.PaidAt,
-            StripePaymentIntentId: payment.StripePaymentIntentId);
+        return payment.Adapt<PaymentDto>();
     }
 }

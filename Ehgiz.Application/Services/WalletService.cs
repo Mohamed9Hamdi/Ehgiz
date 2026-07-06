@@ -32,11 +32,7 @@ public class WalletService : IWalletService
     public async Task<WalletDto> GetWalletAsync(int userId)
     {
         var wallet = await _uow.Wallets.GetOrCreateByUserIdAsync(userId);
-        return new WalletDto(
-            Id: wallet.Id,
-            Balance: wallet.Balance,
-            HeldBalance: wallet.HeldBalance,
-            TotalBalance: wallet.Balance + wallet.HeldBalance);
+        return wallet.Adapt<WalletDto>();
     }
 
     // Wallet balances are denominated in USD; accepting any other currency here

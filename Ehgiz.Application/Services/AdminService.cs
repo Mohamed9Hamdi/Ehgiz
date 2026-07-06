@@ -68,7 +68,7 @@ public class AdminService : IAdminService
     public async Task<IEnumerable<BookingDto>> GetDisputedBookingsAsync()
     {
         var disputed = await _uow.Bookings.GetDisputedBookingsAsync();
-        return disputed.Select(MapToDto);
+        return disputed.Adapt<List<BookingDto>>();
     }
 
     // ── Get Dispute Details ─────────────────────────────────────────────────
@@ -81,28 +81,9 @@ public class AdminService : IAdminService
         if (booking.Status != BookingStatus.Disputed)
             throw new InvalidOperationException("This booking is not in a disputed state.");
 
-        var bookingDto = MapToDto(booking);
-
-        var issues = booking.IssueReports.Select(ir => new IssueReportDto(
-            Id: ir.Id,
-            ReporterName: ir.Reporter?.FullName ?? string.Empty,
-            Title: ir.Title,
-            Description: ir.Description,
-            Status: ir.Status?.ToString() ?? string.Empty,
-            CreatedAt: ir.CreatedAt));
-
-        var handovers = booking.Handovers.Select(h => new HandoverDto(
-            Id: h.Id,
-            BookingId: h.BookingId,
-            Type: h.Type.ToString(),
-            SubmittedByName: h.SubmittedByUser?.FullName ?? string.Empty,
-            SubmitterNotes: h.SubmitterNotes,
-            SubmittedAt: h.SubmittedAt,
-            RespondedByName: h.RespondedByUser?.FullName,
-            ResponderNotes: h.ResponderNotes,
-            IsAccepted: h.IsAccepted,
-            RespondedAt: h.RespondedAt,
-            Images: h.Images?.Select(i => new HandoverImageDto(i.Id, i.ImageUrl, i.Caption))));
+        var bookingDto = booking.Adapt<BookingDto>();
+        var issues = booking.IssueReports.Adapt<List<IssueReportDto>>();
+        var handovers = booking.Handovers.Adapt<List<HandoverDto>>();
 
         return new DisputeDetailsDto(bookingDto, issues, handovers);
     }
@@ -536,23 +517,12 @@ public class AdminService : IAdminService
         foreach (var user in users)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            result.Add(new AdminUserDetailsDto(
-                Id: user.Id,
-                FullName: user.FullName,
-                Email: user.Email ?? string.Empty,
-                PhoneNumber: user.PhoneNumber,
-                ProfileImageUrl: user.ProfileImageUrl,
-                NationalIdImageUrl: user.NationalIdImageUrl,
-                Address: user.Address,
-                City: user.City,
-                IsActive: user.IsActive,
-                EmailConfirmed: user.EmailConfirmed,
-                Role: roles.FirstOrDefault() ?? AppRoles.User,
-                CreatedAt: user.CreatedAt,
-                TotalListings: listingCounts.GetValueOrDefault(user.Id, 0),
-                TotalBookings: bookingCounts.GetValueOrDefault(user.Id, 0),
-                StripeCustomerId: user.StripeCustomerId,
-                StripeAccountId: user.StripeAccountId));
+            result.Add(user.Adapt<AdminUserDetailsDto>() with
+            {
+                Role = roles.FirstOrDefault() ?? AppRoles.User,
+                TotalListings = listingCounts.GetValueOrDefault(user.Id, 0),
+                TotalBookings = bookingCounts.GetValueOrDefault(user.Id, 0)
+            });
         }
 
         return result;
@@ -567,23 +537,12 @@ public class AdminService : IAdminService
         var totalListings = await _uow.Tools.CountAsync(t => t.OwnerId == userId);
         var totalBookings = await _uow.Bookings.CountAsync(b => b.RenterId == userId);
 
-        return new AdminUserDetailsDto(
-            Id: user.Id,
-            FullName: user.FullName,
-            Email: user.Email ?? string.Empty,
-            PhoneNumber: user.PhoneNumber,
-            ProfileImageUrl: user.ProfileImageUrl,
-            NationalIdImageUrl: user.NationalIdImageUrl,
-            Address: user.Address,
-            City: user.City,
-            IsActive: user.IsActive,
-            EmailConfirmed: user.EmailConfirmed,
-            Role: roles.FirstOrDefault() ?? AppRoles.User,
-            CreatedAt: user.CreatedAt,
-            TotalListings: totalListings,
-            TotalBookings: totalBookings,
-            StripeCustomerId: user.StripeCustomerId,
-            StripeAccountId: user.StripeAccountId);
+        return user.Adapt<AdminUserDetailsDto>() with
+        {
+            Role = roles.FirstOrDefault() ?? AppRoles.User,
+            TotalListings = totalListings,
+            TotalBookings = totalBookings
+        };
     }
 
     public async Task SetUserActiveAsync(int userId, bool isActive)
@@ -657,39 +616,15 @@ public class AdminService : IAdminService
 
     public async Task<AdminListingDetailsDto> GetListingByIdAsync(int id)
     {
-        var tool = await _uow.Tools.Query()
+        var listing = await _uow.Tools.Query()
             .Where(t => t.Id == id)
-            .Select(t => new
-            {
-                t.Id, t.Name, t.Description, t.PricePerDay, t.InsurancePrice,
-                t.Condition, t.Location, t.IsAvailable, t.CategoryId,
-                CategoryName = t.Category.Name,
-                t.OwnerId,
-                OwnerName = t.Owner.FullName,
-                ImageUrls = t.Images.Select(i => i.ImageUrl).ToList(),
-                t.CreatedAt
-            })
+            .ProjectToType<AdminListingDetailsDto>()
             .FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException($"Listing {id} not found.");
 
         var totalBookings = await _uow.Bookings.CountAsync(b => b.ToolId == id);
 
-        return new AdminListingDetailsDto(
-            Id: tool.Id,
-            Name: tool.Name,
-            Description: tool.Description,
-            PricePerDay: tool.PricePerDay,
-            InsurancePrice: tool.InsurancePrice,
-            Condition: tool.Condition == null ? null : tool.Condition.ToString(),
-            Location: tool.Location,
-            IsAvailable: tool.IsAvailable,
-            CategoryId: tool.CategoryId,
-            CategoryName: tool.CategoryName,
-            OwnerId: tool.OwnerId,
-            OwnerName: tool.OwnerName,
-            ImageUrls: tool.ImageUrls,
-            CreatedAt: tool.CreatedAt,
-            TotalBookings: totalBookings);
+        return listing with { TotalBookings = totalBookings };
     }
 
     public async Task SetListingAvailabilityAsync(int id, bool isAvailable)
@@ -980,48 +915,5 @@ public class AdminService : IAdminService
             }
             _uow.HandoverImages.Remove(image);
         }
-    }
-
-    private static BookingDto MapToDto(Booking b)
-    {
-        var days = (int)(b.EndDate.Date - b.StartDate.Date).TotalDays;
-
-        return new BookingDto(
-            Id: b.Id,
-            ToolId: b.ToolId,
-            ToolName: b.Tool?.Name ?? string.Empty,
-            ToolImageUrl: b.Tool?.Images?.FirstOrDefault()?.ImageUrl,
-            OwnerId: b.Tool?.OwnerId ?? 0,
-            OwnerName: b.Tool?.Owner?.FullName ?? string.Empty,
-            OwnerProfileImageUrl: b.Tool?.Owner?.ProfileImageUrl,
-            RenterId: b.RenterId,
-            RenterName: b.Renter?.FullName ?? string.Empty,
-            RenterProfileImageUrl: b.Renter?.ProfileImageUrl,
-            StartDate: b.StartDate,
-            EndDate: b.EndDate,
-            Days: days,
-            RentalCost: b.RentalCost,
-            InsurancePrice: b.InsuranceAmount,
-            TotalPrice: b.TotalPrice,
-            Status: b.Status?.ToString() ?? string.Empty,
-            PaymentStatus: b.Payment?.PaymentStatus?.ToString(),
-            EscrowStatus: b.Payment?.EscrowStatus?.ToString(),
-            CreatedAt: b.CreatedAt,
-            AdminResolutionNotes: b.AdminResolutionNotes,
-            Handovers: b.Handovers?.Select(h => new HandoverDto(
-                Id: h.Id,
-                BookingId: h.BookingId,
-                Type: h.Type.ToString(),
-                SubmittedByName: h.SubmittedByUser?.FullName ?? string.Empty,
-                SubmitterNotes: h.SubmitterNotes,
-                SubmittedAt: h.SubmittedAt,
-                RespondedByName: h.RespondedByUser?.FullName,
-                ResponderNotes: h.ResponderNotes,
-                IsAccepted: h.IsAccepted,
-                RespondedAt: h.RespondedAt,
-                Images: h.Images?.Select(i => new HandoverImageDto(i.Id, i.ImageUrl, i.Caption))
-            )),
-            AllowedActions: [],
-            HasReview: b.Reviews?.Any() ?? false);
     }
 }

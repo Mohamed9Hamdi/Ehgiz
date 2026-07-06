@@ -5,6 +5,7 @@ using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ehgiz.Application.Services;
@@ -598,7 +599,12 @@ public class BookingService : IBookingService
             throw new UnauthorizedAccessException("You are not authorized to view this booking.");
 
         var isOwner = booking.Tool.OwnerId == requestingUserId;
-        return MapToDto(booking, requestingUserId, isOwner);
+        var hasReview = booking.Reviews?.Any() ?? false;
+
+        return booking.Adapt<BookingDto>() with
+        {
+            AllowedActions = ComputeAllowedActions(booking.Status, isOwner, hasReview)
+        };
     }
 
     // ── Report Issue ────────────────────────────────────────────────────────
@@ -657,12 +663,7 @@ public class BookingService : IBookingService
 
         var bookings = await _uow.Bookings.GetBookedDatesByToolIdAsync(toolId, from, to);
 
-        var bookedRanges = bookings.Select(b => new BookedDateRange(
-            BookingId: b.Id,
-            StartDate: b.StartDate,
-            EndDate: b.EndDate,
-            Status: b.Status?.ToString() ?? string.Empty
-        )).ToList();
+        var bookedRanges = bookings.Adapt<List<BookedDateRange>>();
 
         return new ToolAvailabilityDto(
             ToolId: toolId,
@@ -933,51 +934,5 @@ public class BookingService : IBookingService
         }
 
         return actions;
-    }
-
-    // ── Mapping — Full DTO (for detail view) ────────────────────────────────
-
-    private static BookingDto MapToDto(Booking b, int requestingUserId, bool isOwner)
-    {
-        var days = (int)(b.EndDate.Date - b.StartDate.Date).TotalDays;
-        var rentalCost = b.RentalCost;
-
-        return new BookingDto(
-            Id: b.Id,
-            ToolId: b.ToolId,
-            ToolName: b.Tool?.Name ?? string.Empty,
-            ToolImageUrl: b.Tool?.Images?.FirstOrDefault()?.ImageUrl,
-            OwnerId: b.Tool?.OwnerId ?? 0,
-            OwnerName: b.Tool?.Owner?.FullName ?? string.Empty,
-            OwnerProfileImageUrl: b.Tool?.Owner?.ProfileImageUrl,
-            RenterId: b.RenterId,
-            RenterName: b.Renter?.FullName ?? string.Empty,
-            RenterProfileImageUrl: b.Renter?.ProfileImageUrl,
-            StartDate: b.StartDate,
-            EndDate: b.EndDate,
-            Days: days,
-            RentalCost: rentalCost,
-            InsurancePrice: b.InsuranceAmount,
-            TotalPrice: b.TotalPrice,
-            Status: b.Status?.ToString() ?? string.Empty,
-            PaymentStatus: b.Payment?.PaymentStatus?.ToString(),
-            EscrowStatus: b.Payment?.EscrowStatus?.ToString(),
-            CreatedAt: b.CreatedAt,
-            AdminResolutionNotes: b.AdminResolutionNotes,
-            Handovers: b.Handovers?.Select(h => new HandoverDto(
-                Id: h.Id,
-                BookingId: h.BookingId,
-                Type: h.Type.ToString(),
-                SubmittedByName: h.SubmittedByUser?.FullName ?? string.Empty,
-                SubmitterNotes: h.SubmitterNotes,
-                SubmittedAt: h.SubmittedAt,
-                RespondedByName: h.RespondedByUser?.FullName,
-                ResponderNotes: h.ResponderNotes,
-                IsAccepted: h.IsAccepted,
-                RespondedAt: h.RespondedAt,
-                Images: h.Images?.Select(i => new HandoverImageDto(i.Id, i.ImageUrl, i.Caption))
-            )),
-            AllowedActions: ComputeAllowedActions(b.Status, isOwner, hasReview: b.Reviews?.Any() ?? false),
-            HasReview: b.Reviews?.Any() ?? false);
     }
 }

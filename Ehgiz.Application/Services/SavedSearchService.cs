@@ -4,6 +4,7 @@ using Ehgiz.Application.Interfaces;
 using Ehgiz.DAL.Entities;
 using Ehgiz.DAL.Enums;
 using Ehgiz.DAL.Interfaces;
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
@@ -66,18 +67,7 @@ public class SavedSearchService : ISavedSearchService
         return await _uow.SavedSearches.Query()
             .Where(s => s.UserId == userId)
             .OrderByDescending(s => s.CreatedAt)
-            .Select(s => new SavedSearchDto
-            {
-                Id = s.Id,
-                SearchTerm = s.SearchTerm,
-                CategoryId = s.CategoryId,
-                CategoryName = s.Category != null ? s.Category.Name : null,
-                Location = s.Location,
-                MinPrice = s.MinPrice,
-                MaxPrice = s.MaxPrice,
-                Condition = s.Condition != null ? s.Condition.ToString() : null,
-                CreatedAt = s.CreatedAt
-            })
+            .ProjectToType<SavedSearchDto>()
             .ToListAsync();
     }
 
@@ -157,18 +147,7 @@ public class SavedSearchService : ISavedSearchService
     {
         return await _uow.SavedSearches.Query()
             .Where(s => s.Id == id)
-            .Select(s => new SavedSearchDto
-            {
-                Id = s.Id,
-                SearchTerm = s.SearchTerm,
-                CategoryId = s.CategoryId,
-                CategoryName = s.Category != null ? s.Category.Name : null,
-                Location = s.Location,
-                MinPrice = s.MinPrice,
-                MaxPrice = s.MaxPrice,
-                Condition = s.Condition != null ? s.Condition.ToString() : null,
-                CreatedAt = s.CreatedAt
-            })
+            .ProjectToType<SavedSearchDto>()
             .FirstAsync();
     }
 }
