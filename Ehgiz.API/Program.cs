@@ -4,7 +4,6 @@ using Ehgiz.Application;
 using Ehgiz.Application.Common;
 using Ehgiz.DAL;
 using Ehgiz.DAL.Data;
-using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 
 DotNetEnv.Env.Load();
