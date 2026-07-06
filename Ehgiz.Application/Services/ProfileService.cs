@@ -65,6 +65,24 @@ public class ProfileService : IProfileService
         return await MapProfileAsync(user);
     }
 
+    public async Task<UserProfileDTO?> UpdateNationalIdImageAsync(int userId, IFormFile image)
+    {
+        var user = await GetActiveUserAsync(userId);
+        if (user is null)
+            return null;
+
+        var upload = await _cloudinaryService.UploadImageAsync(image);
+
+        if (!string.IsNullOrWhiteSpace(user.NationalIdImagePublicId))
+            await _cloudinaryService.DeleteImageAsync(user.NationalIdImagePublicId);
+
+        user.NationalIdImageUrl = upload.ImageUrl;
+        user.NationalIdImagePublicId = upload.PublicId;
+        await _userManager.UpdateAsync(user);
+
+        return await MapProfileAsync(user);
+    }
+
     public async Task<UserProfileDTO?> RemoveProfileImageAsync(int userId)
     {
         var user = await GetActiveUserAsync(userId);

@@ -12,8 +12,11 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
 
         builder.HasKey(m => m.Id);
 
+        // nvarchar(max), not text: SQL Server's legacy "text" type is non-Unicode
+        // and stores Arabic (and any non-Latin) characters as "?". nvarchar(max)
+        // preserves the full Unicode range.
         builder.Property(m => m.Content)
-            .HasColumnType("text");
+            .HasColumnType("nvarchar(max)");
 
         builder.Property(m => m.Status)
             .HasConversion<string>()
