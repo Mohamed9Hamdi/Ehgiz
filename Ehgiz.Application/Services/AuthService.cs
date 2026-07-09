@@ -401,7 +401,7 @@ public class AuthService : IAuthService
 
     private async Task UploadRegistrationImagesAsync(ApplicationUser user, RegisterRequestDTO dto)
     {
-        if (dto.ProfileImage is null && dto.NationalIdImage is null)
+        if (dto.ProfileImage is null)
             return;
 
         try
@@ -411,13 +411,6 @@ public class AuthService : IAuthService
                 var upload = await _cloudinaryService.UploadImageAsync(dto.ProfileImage);
                 user.ProfileImageUrl = upload.ImageUrl;
                 user.ProfileImagePublicId = upload.PublicId;
-            }
-
-            if (dto.NationalIdImage is not null)
-            {
-                var upload = await _cloudinaryService.UploadImageAsync(dto.NationalIdImage);
-                user.NationalIdImageUrl = upload.ImageUrl;
-                user.NationalIdImagePublicId = upload.PublicId;
             }
 
             await _userManager.UpdateAsync(user);

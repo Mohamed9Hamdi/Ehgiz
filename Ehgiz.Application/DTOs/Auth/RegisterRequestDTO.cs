@@ -9,6 +9,5 @@ public record RegisterRequestDTO(
     [Required, Phone, MaxLength(30)] string PhoneNumber,
     [Required, MaxLength(100)] string City,
     [Required, MinLength(8), MaxLength(128)] string Password,
-    IFormFile? ProfileImage = null,
-    IFormFile? NationalIdImage = null
+    IFormFile? ProfileImage = null
 );

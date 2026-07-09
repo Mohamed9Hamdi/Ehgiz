@@ -238,30 +238,6 @@ public class AuthController : ControllerBase
     }
 
     [Authorize]
-    [HttpPost("me/national-id")]
-    public async Task<IActionResult> UpdateNationalIdImage(IFormFile image)
-    {
-        if (image is null || image.Length == 0)
-        {
-            return BadRequest(ApiResponse<UserProfileDTO>.Fail("Image file is required."));
-        }
-
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(ApiResponse<UserProfileDTO>.Fail("Unauthorized."));
-        }
-
-        var profile = await _profileService.UpdateNationalIdImageAsync(userId, image);
-        if (profile is null)
-        {
-            return NotFound(ApiResponse<UserProfileDTO>.Fail("User not found."));
-        }
-
-        return Ok(ApiResponse<UserProfileDTO>.Success(profile, "National ID image updated successfully."));
-    }
-
-    [Authorize]
     [HttpDelete("me/profile-image")]
     public async Task<IActionResult> RemoveProfileImage()
     {

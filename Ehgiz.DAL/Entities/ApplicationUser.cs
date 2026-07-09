@@ -7,8 +7,6 @@ public class ApplicationUser : IdentityUser<int>
     public string FullName { get; set; } = null!;
     public string? ProfileImageUrl { get; set; }
     public string? ProfileImagePublicId { get; set; }
-    public string? NationalIdImageUrl { get; set; }
-    public string? NationalIdImagePublicId { get; set; }
     public string? Address { get; set; }
     public string? City { get; set; }
     public DateTime CreatedAt { get; set; }

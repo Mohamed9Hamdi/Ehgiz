@@ -6,7 +6,6 @@ public record UserProfileDTO(
     string FullName,
     string? PhoneNumber,
     string? ProfileImageUrl,
-    string? NationalIdImageUrl,
     string? Address,
     string? City,
     DateTime CreatedAt,
