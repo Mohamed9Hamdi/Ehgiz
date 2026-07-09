@@ -1,0 +1,45 @@
+# Render Blueprint — Ehgiz API (Docker)
+# https://render.com/docs/blueprint-spec
+#
+# Adjust repo root if this file lives in a monorepo subdirectory.
+
+services:
+  - type: web
+    name: ehgiz-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_HTTP_PORTS
+        value: "8080"
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Jwt__Key
+        generateValue: true
+      - key: SeedUsers__DefaultPassword
+        sync: false
+      - key: Stripe__SecretKey
+        sync: false
+      - key: Stripe__PublishableKey
+        sync: false
+      - key: Stripe__WebhookSecret
+        sync: false
+      - key: SendGrid__ApiKey
+        sync: false
+      - key: CloudinarySettings__CloudName
+        sync: false
+      - key: CloudinarySettings__ApiKey
+        sync: false
+      - key: CloudinarySettings__ApiSecret
+        sync: false
+      - key: AI__ApiKey
+        sync: false
+      - key: Frontend__BaseUrl
+        sync: false
+      - key: Frontend__AllowedOrigins__0
+        sync: false

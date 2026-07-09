@@ -4,6 +4,7 @@ using Ehgiz.Application;
 using Ehgiz.Application.Common;
 using Ehgiz.DAL;
 using Ehgiz.DAL.Data;
+using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 
 DotNetEnv.Env.Load();
@@ -54,8 +55,16 @@ builder.Services.AddSwaggerWithAuth();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<EhgizDbContext>("database");
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
 
+await app.ApplyDatabaseMigrationsAndSeedAsync();
 await app.UseSwaggerInDevelopmentAsync();
 app.UseApplicationMiddleware();
 app.MapControllers();

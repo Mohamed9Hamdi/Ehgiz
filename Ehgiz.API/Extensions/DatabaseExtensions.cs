@@ -1,3 +1,4 @@
+using Ehgiz.Application.Seed;
 using Ehgiz.DAL.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,5 +27,15 @@ public static class DatabaseExtensions
                 }));
 
         return services;
+    }
+
+    public static async Task ApplyDatabaseMigrationsAndSeedAsync(this WebApplication app)
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<EhgizDbContext>();
+        await db.Database.MigrateAsync();
+
+        var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+        await seeder.SeedAsync();
     }
 }

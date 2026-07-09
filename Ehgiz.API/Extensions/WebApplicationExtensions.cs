@@ -1,16 +1,16 @@
 using Ehgiz.API.Hubs;
 using Ehgiz.API.Middleware;
-using Ehgiz.Application.Seed;
+using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 
 namespace Ehgiz.API.Extensions;
 
 public static class WebApplicationExtensions
 {
-    public static async Task UseSwaggerInDevelopmentAsync(this WebApplication app)
+    public static Task UseSwaggerInDevelopmentAsync(this WebApplication app)
     {
         if (!app.Environment.IsDevelopment())
-            return;
+            return Task.CompletedTask;
 
         app.UseSwagger();
         app.UseSwaggerUI(options =>
@@ -18,9 +18,7 @@ public static class WebApplicationExtensions
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "Ehgiz API v1");
         });
 
-        using var scope = app.Services.CreateScope();
-        var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
-        await seeder.SeedAsync();
+        return Task.CompletedTask;
     }
 
     public static WebApplication UseApplicationMiddleware(this WebApplication app)
@@ -31,6 +29,7 @@ public static class WebApplicationExtensions
 
         if (!app.Environment.IsDevelopment())
         {
+            app.UseForwardedHeaders();
             app.UseHsts();
             app.UseHttpsRedirection();
         }

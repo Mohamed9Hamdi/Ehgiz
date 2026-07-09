@@ -191,6 +191,19 @@ The test suite (`Ehgiz.Tests`) covers the application services (auth, bookings, 
 
 ---
 
+## Docker / Render
+
+Deploy the API as a Docker container on [Render](https://render.com) with an external SQL Server.
+
+```bash
+docker build -t ehgiz-api .
+docker run -p 8080:8080 --env-file Ehgiz.API/.env -e ASPNETCORE_ENVIRONMENT=Production ehgiz-api
+```
+
+Full setup, environment variables, and troubleshooting: [`docs/Docker-Render.md`](docs/Docker-Render.md).
+
+---
+
 ## License
 
 This project is proprietary. All rights reserved.
