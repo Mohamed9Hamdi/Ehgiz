@@ -44,4 +44,8 @@
     <ProjectReference Include="..\Ehgiz.DAL\Ehgiz.DAL.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\" />
+  </ItemGroup>
+
 </Project>
