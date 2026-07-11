@@ -717,6 +717,15 @@ public class AdminService : IAdminService
         await _uow.SaveChangesAsync();
     }
 
+    public async Task<string> UploadCategoryImageAsync(Microsoft.AspNetCore.Http.IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            throw new InvalidOperationException("File is empty.");
+
+        var uploadResult = await _cloudinaryService.UploadImageAsync(file);
+        return uploadResult.ImageUrl;
+    }
+
     // ── Platform Settings ───────────────────────────────────────────────────
 
     public async Task<decimal> GetPlatformFeeAsync()

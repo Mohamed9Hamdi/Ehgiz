@@ -40,6 +40,7 @@ public interface IAdminService
     Task<AdminCategoryDto> CreateCategoryAsync(CreateCategoryRequest request);
     Task<AdminCategoryDto> UpdateCategoryAsync(int id, UpdateCategoryRequest request);
     Task DeleteCategoryAsync(int id);
+    Task<string> UploadCategoryImageAsync(Microsoft.AspNetCore.Http.IFormFile file);
 
     // Platform Settings
     Task<decimal> GetPlatformFeeAsync();

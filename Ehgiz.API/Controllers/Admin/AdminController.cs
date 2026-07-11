@@ -225,6 +225,14 @@ public class AdminController : ControllerBase
         return Ok(ApiResponse<object>.Success(null!, $"Category #{id} has been deleted."));
     }
 
+    // POST api/admin/categories/upload-image
+    [HttpPost("categories/upload-image")]
+    public async Task<IActionResult> UploadCategoryImage(Microsoft.AspNetCore.Http.IFormFile file)
+    {
+        var imageUrl = await _adminService.UploadCategoryImageAsync(file);
+        return Ok(ApiResponse<object>.Success(new { imageUrl }, "Image uploaded successfully."));
+    }
+
     // ── Wallet & Transaction Management ───────────────────────────────────────
 
     // GET api/admin/wallets
