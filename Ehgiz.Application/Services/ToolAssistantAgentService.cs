@@ -88,6 +88,8 @@ public class ToolAssistantAgentService : IToolAssistantService
                 CategoryName = t.Category.Name,
                 t.PricePerDay,
                 t.Location,
+                t.Latitude,
+                t.Longitude,
                 t.IsAvailable,
                 ImageUrls = t.Images.Select(i => i.ImageUrl).ToList(),
                 t.CreatedAt
@@ -117,6 +119,8 @@ public class ToolAssistantAgentService : IToolAssistantService
                 PricePerDay = tool.PricePerDay,
                 CategoryName = tool.CategoryName,
                 Location = tool.Location,
+                Latitude = tool.Latitude,
+                Longitude = tool.Longitude,
                 ImageUrls = tool.ImageUrls
             });
         }
