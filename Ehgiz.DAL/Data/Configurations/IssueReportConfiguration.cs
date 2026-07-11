@@ -16,7 +16,7 @@ public class IssueReportConfiguration : IEntityTypeConfiguration<IssueReport>
             .HasMaxLength(200);
 
         builder.Property(ir => ir.Description)
-            .HasColumnType("text");
+            .HasColumnType("nvarchar(max)");
 
         builder.Property(ir => ir.Status)
             .HasConversion<string>()

@@ -18,7 +18,7 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
 
         builder.Property(n => n.Message)
             .IsRequired()
-            .HasColumnType("text");
+            .HasColumnType("nvarchar(max)");
 
         builder.Property(n => n.Type)
             .IsRequired()

@@ -16,7 +16,7 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
             .IsRequired();
 
         builder.Property(r => r.Comment)
-            .HasColumnType("text");
+            .HasColumnType("nvarchar(max)");
 
         builder.Property(r => r.CreatedAt)
             .IsRequired();
