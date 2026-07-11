@@ -8,7 +8,7 @@ public record WalletDto(
 
 public record TopUpRequest(
     decimal Amount,
-    string Currency = "usd");
+    string Currency = "egp");
 
 public record TopUpResponse(
     string ClientSecret,

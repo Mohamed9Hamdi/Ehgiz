@@ -37,7 +37,7 @@ public class WalletService : IWalletService
 
     // Wallet balances are denominated in USD; accepting any other currency here
     // would let a checkout paid in a cheap currency be credited 1:1 as dollars.
-    private const string WalletCurrency = "usd";
+    private const string WalletCurrency = "egp";
     private const decimal MaxTopUpAmount = 100_000m;
 
     public async Task<TopUpResponse> InitiateTopUpAsync(int userId, TopUpRequest request, string returnUrl)
@@ -52,7 +52,7 @@ public class WalletService : IWalletService
             throw new InvalidOperationException("Top-up amount cannot have more than two decimal places.");
 
         if (!string.Equals(request.Currency, WalletCurrency, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Only USD top-ups are supported.");
+            throw new InvalidOperationException("Only EGP top-ups are supported.");
 
         var user = await _userManager.FindByIdAsync(userId.ToString())
             ?? throw new KeyNotFoundException("User not found.");
