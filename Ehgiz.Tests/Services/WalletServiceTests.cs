@@ -60,7 +60,7 @@ public class WalletServiceTests : IAsyncLifetime
     public async Task InitiateTopUpAsync_CreatesStripeCustomerOnceAndReturnsClientSecret()
     {
         _stripe.CreateOrGetCustomerAsync(_user.Email!, _user.FullName).Returns("cus_123");
-        _stripe.CreateCheckoutSessionAsync(50m, "usd", "cus_123", Arg.Any<string>(), _user.Id, "https://return")
+        _stripe.CreateCheckoutSessionAsync(50m, "egp", "cus_123", Arg.Any<string>(), _user.Id, "https://return")
             .Returns("secret_abc");
 
         var result = await _sut.InitiateTopUpAsync(_user.Id, new TopUpRequest(50m), "https://return");
@@ -227,7 +227,7 @@ public class WalletServiceTests : IAsyncLifetime
 
         await _sut.WithdrawAsync(_user.Id, new WithdrawalRequest(60m));
 
-        await _stripe.Received(1).TransferToConnectAccountAsync("acct_1", 60m, "usd", Arg.Any<string>());
+        await _stripe.Received(1).TransferToConnectAccountAsync("acct_1", 60m, "egp", Arg.Any<string>());
 
         // The debit runs as an atomic UPDATE that bypasses the change tracker,
         // so drop cached instances before re-reading the wallet.
